@@ -1,0 +1,118 @@
+Here is the project overview and requirements document based on the plan you provided.
+
+***
+
+## Project Overview
+
+### Executive Summary
+This project is a 6-month initiative to build and launch a modular, multi-tenant Software-as-a-Service (SaaS) platform for hospitality businesses. The initial development will be guided by two diverse test clients: a mobile café (needing simple takeaway scheduling) and a sit-down restaurant (needing complex table management).
+
+The primary goal is to achieve **10 paying customers** and **£1,000-£1,200 in Monthly Recurring Revenue (MRR)** by the end of Month 6. The system will be built using AI assistance (Claude Code, Cursor) and will feature a hybrid-offline capability, allowing critical functions to work without a stable internet connection.
+
+---
+
+### Phased Rollout & Module Priority
+Development will follow a "vertical slice" approach, launching modules sequentially to generate revenue starting in Month 2. The module priority is:
+
+1.  **Phase 1: Base Module (Weeks 1-6):** Focuses on core multi-tenancy, offline sync, and order-taking. This includes **takeaway time slots** (for the café) and basic **dine-in with table numbers** (for the restaurant). The goal is to get both test clients live and paying.
+2.  **Phase 2: Table Management Module (Weeks 7-14):** A deep dive into features for sit-down restaurants. This phase delivers a **visual floor plan builder**, a full **reservation system**, real-time availability algorithms, and table merging logic.
+3.  **Phase 3: Management Module (Weeks 15-22):** Adds high-value operational tools, including **staff scheduling (rotas)**, **sales analytics dashboards**, and basic **inventory management**. This module is key to upselling existing clients and hitting the MRR target.
+4.  **Phase 4: Delivery Module (Weeks 23-26):** An optional, lower-priority module to be built only if there is strong client demand. It would add delivery radius, fees, and basic order tracking.
+
+---
+
+### Key Technical Pillars
+* **Multi-Tenancy:** The system is architected from the start to support multiple, isolated clients. All data (orders, settings, staff) will be scoped to a unique `tenantId`, and Firebase Security Rules will enforce strict data isolation.
+* **Hybrid Offline:** Using Firestore's offline persistence, the app will provide critical functionality when offline. Staff can continue to view menus and create new orders, which are then queued and synced automatically when connectivity returns. Payments and real-time reports will remain online-only.
+* **Modular Subscriptions:** Features are grouped into distinct modules (Base, Table, Management) that can be enabled per tenant, allowing for flexible pricing tiers.
+
+***
+
+## Requirements Document
+
+This document outlines the requirements for the Restaurant Management SaaS platform.
+
+### 1. User Roles
+* **Customer:** A patron of the establishment who places a takeaway order or makes a table reservation.
+* **Staff:** An employee (e.g., waiter, kitchen staff) who uses the system to take orders, view the Kitchen Display System (KDS), and view their shifts.
+* **Admin (Owner/Manager):** A privileged user who configures all system settings, manages staff, builds rotas, defines floor plans, and views analytics.
+
+---
+
+### 2. Core System Requirements (Non-Functional)
+* **R-2.1 Multi-Tenancy:** All data must be partitioned by a `tenantId`. A user's authentication token must contain their `tenantId` and `role` as custom claims.
+* **R-2.2 Security:** Firebase Security Rules must enforce that users can only read/write data associated with their own `tenantId`. Admin-level actions (like changing settings) must be restricted to users with the `admin` role.
+* **R-2.3 Offline Capability:** The system must use Firestore offline persistence.
+    * **R-2.3.1:** Users must be able to view cached data (e.g., menu, existing orders) while offline.
+    * **R-2.3.2:** Users must be able to create new orders while offline. These orders must be queued and sync to the backend when the connection is restored.
+    * **R-2.3.3:** Payment processing and real-time analytics dashboards require an active internet connection.
+    * **R-2.3.4:** The UI must display a visual indicator of the current online/offline status.
+* **R-2.4 Modularity:** The system must be able to enable or disable modules (Base, Table Management, Management) on a per-tenant basis. The UI must dynamically adapt to show only features included in the tenant's subscription.
+
+---
+
+### 3. Functional Requirements by Module
+
+#### Module 1: Base (Ordering & Dine-In)
+* **F-1.1 Order Types:** The system must support 'takeaway' and 'dine-in' order types, selectable at the start of order creation.
+* **F-1.2 Takeaway Time Slots:**
+    * **F-1.2.1:** Admins must be able to configure takeaway time slot duration (e.g., 15 minutes) and the maximum number of orders allowed per slot.
+    * **F-1.2.2:** Admins must be able to configure different `maxOrders` rules for different times of day (e.g., 8 orders for 7-9am, 5 orders for 9-11am).
+    * **F-1.2.3:** Customers must see a visual representation of how busy each time slot is (e.g., 'low', 'medium', 'full') before selecting.
+* **F-1.3 Dine-In Orders:**
+    * **F-1.3.1:** Admins must be able to configure the number of tables for basic dine-in (e.g., 1-50).
+    * **F-1.3.2:** Staff must be able to select a table number and enter a guest count when placing a 'dine-in' order.
+    * **F-1.3.3:** The Kitchen Display System (KDS) must prominently display the table number and guest count for all dine-in orders.
+* **F-1.4 Admin Configuration:** Admins must have a settings panel to enable/disable order types (dine-in, takeaway).
+
+#### Module 2: Table Management (Reservations)
+* **F-2.1 Floor Plan Builder:**
+    * **F-2.1.1:** Admins must be able to create, save, and edit a visual floor plan using a grid-based interface.
+    * **F-2.1.2:** Admins must be able to add tables, define their position on the grid, and set properties including table number, capacity, and shape (e.g., square, circle).
+    * **F-2.1.3:** Admins must be able to designate which tables are "mergeable" with each other.
+* **F-2.2 Reservation System:**
+    * **F-2.2.1:** Customers must be able to request a reservation by selecting a date, time, and party size.
+    * **F-2.2.2:** The system must only show time slots that have table availability for the requested party size.
+    * **F-2.2.3:** The system must capture customer details (name, phone, email) and a field for special requests.
+* **F-2.3 Availability & Assignment Logic:**
+    * **F-2.3.1:** The system must calculate real-time table availability based on service periods, table capacities, and existing reservations.
+    * **F-2.3.2:** The availability algorithm must account for table "turn time" (e.g., a 90-minute reservation blocks a table for that period).
+    * **F-2.3.3:** The system must support table merging logic to accommodate large parties (e.g., combining two 4-person tables for a party of 8).
+    * **F-2.3.4:** The system must auto-assign the most suitable table(s) to a new reservation.
+    * **F-2.3.5 (Optional):** The system may allow customers to manually select a specific table from the floor plan if available.
+* **F-2.4 Admin Configuration:**
+    * **F-2.4.1:** Admins must be able to define "Service Periods" (e.g., "Lunch 12:00-15:00", "Dinner 18:00-22:00") and the days of the week they apply.
+    * **F-2.4.2:** For each service period, admins must be able to set the default turn time, slot interval (e.g., bookings every 30 min), and max reservations per slot.
+    * **F-2.4.3:** Admins must be able to define variable turn-time rules based on party size (e.g., 1-2 guests = 60 min, 3-4 guests = 90 min).
+* **F-2.5 Reservation Management:**
+    * **F-2.5.1:** Admins must be able to manually update a reservation's status (e.g., 'pending', 'confirmed', 'seated', 'completed', 'cancelled', 'no-show').
+    * **F-2.5.2 (Optional):** The system must support taking reservation deposits via Stripe integration, configurable by the admin (e.g., only for parties > 6).
+
+#### Module 3: Management (Operations & Analytics)
+* **F-3.1 Staff Scheduling (Rotas):**
+    * **F-3.1.1:** Admins must be able to create and manage staff profiles, including name, role (e.g., server, kitchen), and weekly availability.
+    * **F-3.1.2:** Admins must be able to build, view, and publish a weekly staff rota using a visual calendar interface.
+    * **F-3.1.3:** Admins must be able to create, edit, and delete individual shifts, assigning them to a staff member.
+    * **F-3.1.4:** The system must automatically detect and warn the admin of scheduling conflicts (e.g., one staff member with overlapping shifts).
+    * **F-3.1.5:** The system must be able to suggest available staff for a shift based on their role and pre-set availability.
+    * **F-3.1.6:** Admins must be able to create, save, and apply "Rota Templates" (e.g., a standard 'Saturday Dinner' shift pattern).
+* **F-3.2 Sales Analytics:**
+    * **F-3.2.1:** Admins must be able to view a sales dashboard with a selectable date range.
+    * **F-3.2.2:** The dashboard must display Key Performance Indicators (KPIs): Total Revenue, Total Orders, and Average Order Value.
+    * **F-3.2.3:** The dashboard must include charts for:
+        * Revenue trend over time (Line chart)
+        * Revenue by hour of the day (Bar chart)
+        * Order type breakdown (Pie chart)
+    * **F-3.2.4:** The dashboard must display a table of top-selling items by revenue and quantity.
+    * **F-3.2.5:** Admins must be able to export the sales report data to a CSV file.
+* **F-3.3 Inventory Management (Basic):**
+    * **F-3.3.1:** Admins must be able to create and manage a list of inventory items (e.g., flour, coffee beans, takeaway cups).
+    * **F-3.3.2:** For each item, admins must be able to set the current stock level, unit (kg, piece, liter), and cost per unit.
+    * **F-3.3.3:** Admins must be able to set a "low stock threshold" and "reorder point" for each item.
+    * **F-3.3.4:** The system must display a prominent "Low Stock Alert" in the UI for any item at or below its threshold.
+    * **F-3.3.5:** Admins must be able to manually adjust stock levels and log a reason (e.g., "Stock Received," "Waste," "Correction").
+    * **F-3.3.6:** The system must automatically send a daily notification (via a scheduled Cloud Function) to admins summarizing all low-stock items.
+* **F-3.4 Occupancy Analytics:**
+    * **F-3.4.1:** Admins must be able to view a dashboard for table occupancy analytics.
+    * **F-3.4.2:** The dashboard must display the "Overall Occupancy Rate" and "Average Turn Time" for the selected period.
+    * **F-3.4.3:** The system must provide a per-table breakdown showing occupancy rate, total reservations, and revenue generated for each table.
