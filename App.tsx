@@ -20,6 +20,7 @@ import { KitchenDisplaySystem } from './components/admin/KitchenDisplaySystem';
 import { useDailySpecial } from './hooks/useDailySpecial';
 import { ToastProvider } from './components/ToastProvider';
 import { FixUserPage } from './components/FixUserPage';
+import { OfflineIndicator } from './components/OfflineIndicator';
 
 const CustomerApp = () => {
     const { user } = useAuth();
@@ -141,7 +142,14 @@ const CustomerApp = () => {
         }
     }, []);
 
-    const handlePlaceOrder = useCallback(async (collectionTime: string, finalTotal: number, rewardItem?: { name: string, price: number }) => {
+    const handlePlaceOrder = useCallback(async (
+        collectionTime: string,
+        finalTotal: number,
+        orderType: 'takeaway' | 'dine-in' | 'delivery',
+        tableNumber?: number,
+        guestCount?: number,
+        rewardItem?: { name: string, price: number }
+    ) => {
         if (!user) return;
 
         if (!tenantId) {
@@ -153,7 +161,7 @@ const CustomerApp = () => {
         const loadingToast = toast.loading('Placing your order...');
 
         try {
-            await placeOrder(tenantId, user.uid, cart, finalTotal, collectionTime, rewardItem);
+            await placeOrder(tenantId, user.uid, cart, finalTotal, collectionTime, orderType, tableNumber, guestCount, rewardItem);
             toast.success('Order placed successfully!', { id: loadingToast });
             setCart([]);
             setIsCartVisible(false);
@@ -380,6 +388,7 @@ const App = () => {
             ) : (
                 <CustomerApp />
             )}
+            <OfflineIndicator />
         </ToastProvider>
     );
 };

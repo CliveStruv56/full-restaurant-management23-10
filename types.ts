@@ -153,6 +153,7 @@ export interface AppSettings {
     loyaltyEnabled: boolean;
     pointsPerDollar: number;
     pointsToReward: number;
+    availableTables?: number[]; // NEW: Available table numbers for dine-in orders
 }
 
 export interface TimeSlot {

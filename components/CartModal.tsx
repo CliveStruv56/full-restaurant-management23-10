@@ -11,7 +11,14 @@ interface CartModalProps {
     onClose: () => void;
     cart: CartItem[];
     onUpdateQuantity: (cartItemId: string, newQuantity: number) => void;
-    onPlaceOrder: (collectionTime: string, finalTotal: number, rewardItem?: { name: string, price: number }) => void;
+    onPlaceOrder: (
+        collectionTime: string,
+        finalTotal: number,
+        orderType: 'takeaway' | 'dine-in' | 'delivery',
+        tableNumber?: number,
+        guestCount?: number,
+        rewardItem?: { name: string, price: number }
+    ) => void;
     settings: AppSettings;
     orders: Order[];
     loyaltyPoints: number;
@@ -112,6 +119,9 @@ const TimeSlotPicker = ({ settings, orders, selectedTime, onSelectTime }: { sett
 
 export const CartModal: React.FC<CartModalProps> = ({ isOpen, onClose, cart, onUpdateQuantity, onPlaceOrder, settings, orders, loyaltyPoints, isRewardApplied, onRewardToggle }) => {
     const [selectedTime, setSelectedTime] = useState('');
+    const [orderType, setOrderType] = useState<'takeaway' | 'dine-in' | 'delivery'>('takeaway');
+    const [tableNumber, setTableNumber] = useState<number | undefined>(undefined);
+    const [guestCount, setGuestCount] = useState<number>(2);
     
     const subtotal = useMemo(() => cart.reduce((sum, item) => sum + item.price * item.quantity, 0), [cart]);
     
@@ -133,8 +143,27 @@ export const CartModal: React.FC<CartModalProps> = ({ isOpen, onClose, cart, onU
         }
         if (cart.length === 0) return;
 
+        // Validate dine-in specific fields
+        if (orderType === 'dine-in') {
+            if (tableNumber === undefined || tableNumber === null) {
+                toast.error("Please select a table number for dine-in orders.");
+                return;
+            }
+            if (!guestCount || guestCount < 1) {
+                toast.error("Please enter the number of guests.");
+                return;
+            }
+        }
+
         const reward = isRewardApplied && rewardEligibleItem ? { name: rewardEligibleItem.name, price: rewardEligibleItem.price } : undefined;
-        onPlaceOrder(selectedTime, finalTotal, reward);
+        onPlaceOrder(
+            selectedTime,
+            finalTotal,
+            orderType,
+            orderType === 'dine-in' ? tableNumber : undefined,
+            orderType === 'dine-in' ? guestCount : undefined,
+            reward
+        );
     };
 
     if (!isOpen) return null;
@@ -195,10 +224,95 @@ export const CartModal: React.FC<CartModalProps> = ({ isOpen, onClose, cart, onU
                                     <span>{formatCurrency(finalTotal, settings.currency)}</span>
                                 </div>
                             </div>
-                            
+
+                            {/* Order Type Selection */}
                             <div style={{marginTop: '20px'}}>
-                                <TimeSlotPicker 
-                                    settings={settings} 
+                                <label style={styles.adminLabel}>Order Type</label>
+                                <div style={{display: 'flex', gap: '10px', marginTop: '8px'}}>
+                                    <button
+                                        onClick={() => setOrderType('takeaway')}
+                                        style={{
+                                            flex: 1,
+                                            padding: '12px',
+                                            backgroundColor: orderType === 'takeaway' ? '#10b981' : '#f3f4f6',
+                                            color: orderType === 'takeaway' ? 'white' : '#374151',
+                                            border: 'none',
+                                            borderRadius: '8px',
+                                            cursor: 'pointer',
+                                            fontWeight: 600,
+                                            fontSize: '14px',
+                                        }}
+                                    >
+                                        Takeaway
+                                    </button>
+                                    <button
+                                        onClick={() => setOrderType('dine-in')}
+                                        style={{
+                                            flex: 1,
+                                            padding: '12px',
+                                            backgroundColor: orderType === 'dine-in' ? '#10b981' : '#f3f4f6',
+                                            color: orderType === 'dine-in' ? 'white' : '#374151',
+                                            border: 'none',
+                                            borderRadius: '8px',
+                                            cursor: 'pointer',
+                                            fontWeight: 600,
+                                            fontSize: '14px',
+                                        }}
+                                    >
+                                        Dine-In
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Dine-In Specific Fields */}
+                            {orderType === 'dine-in' && (
+                                <div style={{marginTop: '20px'}}>
+                                    <div style={{display: 'flex', gap: '15px'}}>
+                                        <div style={{flex: 1}}>
+                                            <label style={styles.adminLabel}>Table Number</label>
+                                            <select
+                                                value={tableNumber ?? ''}
+                                                onChange={(e) => setTableNumber(e.target.value ? Number(e.target.value) : undefined)}
+                                                style={{
+                                                    width: '100%',
+                                                    padding: '10px',
+                                                    marginTop: '5px',
+                                                    border: '1px solid #d1d5db',
+                                                    borderRadius: '6px',
+                                                    fontSize: '14px',
+                                                }}
+                                            >
+                                                <option value="">Select table...</option>
+                                                {(settings.availableTables || [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]).map(table => (
+                                                    <option key={table} value={table}>Table {table}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        <div style={{flex: 1}}>
+                                            <label style={styles.adminLabel}>Number of Guests</label>
+                                            <input
+                                                type="number"
+                                                min="1"
+                                                max="20"
+                                                value={guestCount}
+                                                onChange={(e) => setGuestCount(Number(e.target.value))}
+                                                style={{
+                                                    width: '100%',
+                                                    padding: '10px',
+                                                    marginTop: '5px',
+                                                    border: '1px solid #d1d5db',
+                                                    borderRadius: '6px',
+                                                    fontSize: '14px',
+                                                }}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            <div style={{marginTop: '20px'}}>
+                                <TimeSlotPicker
+                                    settings={settings}
                                     orders={orders}
                                     selectedTime={selectedTime}
                                     onSelectTime={setSelectedTime}

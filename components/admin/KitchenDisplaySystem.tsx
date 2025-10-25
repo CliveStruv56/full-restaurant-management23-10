@@ -123,6 +123,38 @@ const OrderCard: React.FC<{
             <p style={{fontSize: '1rem', fontWeight: 700, margin: '8px 0', color: isOverdue ? '#1f2937' : '#2563eb'}}>
                 👤 {order.customerName || 'Guest'}
             </p>
+
+            {/* Display order type and table info for dine-in */}
+            {order.orderType === 'dine-in' && order.tableNumber && (
+                <div style={{
+                    backgroundColor: '#2563eb',
+                    color: 'white',
+                    fontWeight: 'bold',
+                    fontSize: '1.1rem',
+                    padding: '10px 15px',
+                    borderRadius: '6px',
+                    textAlign: 'center',
+                    marginBottom: '10px',
+                    letterSpacing: '0.5px',
+                }}>
+                    🍽️ TABLE {order.tableNumber} {order.guestCount && `(${order.guestCount} guests)`}
+                </div>
+            )}
+            {order.orderType === 'takeaway' && (
+                <div style={{
+                    backgroundColor: '#10b981',
+                    color: 'white',
+                    fontWeight: 600,
+                    fontSize: '0.875rem',
+                    padding: '6px 12px',
+                    borderRadius: '4px',
+                    textAlign: 'center',
+                    marginBottom: '10px',
+                }}>
+                    📦 TAKEAWAY
+                </div>
+            )}
+
             {isOverdue && (
                 <div style={{
                     backgroundColor: '#dc2626',

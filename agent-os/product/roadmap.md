@@ -8,9 +8,9 @@
 
 2. [x] User Invitation System - Cloud Functions-based invitation flow where tenant admins can invite staff and customers via email. Invited users receive temporary credentials, set their password, and are automatically assigned to the correct tenant with appropriate role permissions. **Implementation COMPLETE (Phases 1-4 + Bug Fixes). All features working end-to-end. Pending email service configuration (SendGrid/Mailgun) for staging deployment.** `COMPLETED`
 
-3. [ ] Offline Persistence - Enable Firestore offline cache with intelligent priming for critical data (today's orders, menu items, settings). Offline indicator UI shows connection status. Orders created offline queue automatically and sync when connectivity returns. `M`
+3. [x] Offline Persistence - Enable Firestore offline cache with intelligent priming for critical data (today's orders, menu items, settings). Offline indicator UI shows connection status. Orders created offline queue automatically and sync when connectivity returns. **Implementation COMPLETE. Firestore offline persistence enabled, cache priming integrated, OfflineIndicator component deployed.** `COMPLETED`
 
-4. [ ] Dine-In Order Types - Extend order placement to support order type selection (Takeaway, Dine-In). For dine-in orders, capture table number and guest count. KDS displays table numbers prominently. Admin can configure available table numbers via base module settings. `S`
+4. [x] Dine-In Order Types - Extend order placement to support order type selection (Takeaway, Dine-In). For dine-in orders, capture table number and guest count. KDS displays table numbers prominently. Admin can configure available table numbers via base module settings. **Implementation COMPLETE. Order type selection in CartModal, table/guest inputs for dine-in, prominent KDS badges.** `COMPLETED`
 
 ## Phase 3: Table Management Module (Weeks 7-14)
 
@@ -63,7 +63,17 @@
 >   - Auto-login and redirect working
 >   - Multi-tenant support implemented
 >   - Ready for email service configuration and staging deployment
-> - Next: Offline Persistence (Phase 2, Item 3) or Dine-In Order Types (Phase 2, Item 4)
+> - Phase 2, Item 3 (Offline Persistence) COMPLETED as of October 25, 2025
+>   - Firestore offline persistence enabled with IndexedDB
+>   - Intelligent cache priming on tenant load
+>   - OfflineIndicator component with connection status
+>   - Orders and menu data available offline
+> - Phase 2, Item 4 (Dine-In Order Types) COMPLETED as of October 25, 2025
+>   - Order type selection (Takeaway/Dine-In) in CartModal
+>   - Table number and guest count inputs for dine-in
+>   - Prominent KDS display with table badges
+>   - Validation and error handling
+> - **Phase 2 FULLY COMPLETE** - Moving to Phase 3 (Table Management Module)
 > - Phase 2-5 align with 20-week implementation plan to £556 MRR target
 > - Future enhancements are revenue-generating modules for post-launch growth
 > - Effort estimates: XS (1 day), S (2-3 days), M (1 week), L (2 weeks), XL (3+ weeks)

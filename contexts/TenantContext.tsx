@@ -1,6 +1,7 @@
 import React, { createContext, useState, useEffect, useContext, ReactNode } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase/config';
+import { primeOfflineCache } from '../firebase/offlineCache';
 
 // Tenant interface
 export interface Tenant {
@@ -89,6 +90,9 @@ export const TenantProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         const tenantData = { id: tenantDoc.id, ...tenantDoc.data() } as Tenant;
         setTenant(tenantData);
         console.log(`✅ Tenant loaded: ${tenantData.businessName}`);
+
+        // Prime offline cache with tenant data
+        primeOfflineCache(tenantId);
       } else {
         console.error(`❌ Tenant not found: ${tenantId}`);
         setError(`Tenant not found: ${tenantId}`);
