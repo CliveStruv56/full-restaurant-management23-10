@@ -1,0 +1,263 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ============================================================================
+    // HELPER FUNCTIONS
+    // ============================================================================
+
+    /**
+     * Check if user is authenticated
+     */
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    /**
+     * Get user document data
+     */
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    /**
+     * Check if user has role in specified tenant (multi-tenant support)
+     */
+    function hasRole(tenantId, allowedRoles) {
+      let userData = getUserData();
+      return tenantId in userData.tenantMemberships
+        && userData.tenantMemberships[tenantId].role in allowedRoles
+        && userData.tenantMemberships[tenantId].isActive == true;
+    }
+
+    /**
+     * Get user's tenant ID from their profile (legacy support)
+     */
+    function getUserTenant() {
+      return getUserData().tenantId;
+    }
+
+    /**
+     * Get user's role from their profile (legacy support)
+     */
+    function getUserRole() {
+      return getUserData().role;
+    }
+
+    /**
+     * Check if user belongs to specified tenant (supports both legacy and new structure)
+     */
+    function belongsToTenant(tenantId) {
+      return isAuthenticated() && (
+        (getUserData().keys().hasAny(['tenantMemberships']) &&
+         tenantId in getUserData().tenantMemberships &&
+         getUserData().tenantMemberships[tenantId].isActive == true) ||
+        getUserData().tenantId == tenantId
+      );
+    }
+
+    /**
+     * Check if user is admin (legacy support)
+     */
+    function isAdmin() {
+      return isAuthenticated() && getUserRole() == 'admin';
+    }
+
+    /**
+     * Check if user is staff or admin (legacy support)
+     */
+    function isStaffOrAdmin() {
+      return isAuthenticated() && getUserRole() in ['staff', 'admin'];
+    }
+
+    /**
+     * Check if user is admin of the specified tenant (multi-tenant aware)
+     */
+    function isTenantAdmin(tenantId) {
+      return isAuthenticated() && (
+        hasRole(tenantId, ['admin']) ||
+        (belongsToTenant(tenantId) && isAdmin()) // Legacy fallback
+      );
+    }
+
+    // ============================================================================
+    // USER PROFILES
+    // ============================================================================
+
+    /**
+     * Users can read/update their own profile
+     * Admins can manage all users in their tenant
+     */
+    match /users/{userId} {
+      // Read: User can read their own profile
+      allow read: if isAuthenticated() && request.auth.uid == userId;
+
+      // Create: User can create their own profile during signup
+      // Cloud Functions can create users (bypasses security rules with Admin SDK)
+      allow create: if isAuthenticated() &&
+                       request.auth.uid == userId &&
+                       request.resource.data.keys().hasAny(['tenantId', 'tenantMemberships']);
+
+      // Update: User can update their own profile (except tenantMemberships)
+      //         Cloud Functions handle tenantMemberships updates
+      allow update: if isAuthenticated() &&
+                       request.auth.uid == userId &&
+                       !request.resource.data.diff(resource.data).affectedKeys().hasAny(['tenantMemberships', 'createdAt']);
+
+      // Delete: Only Cloud Functions can delete users (admin SDK)
+      allow delete: if false;
+    }
+
+    // ============================================================================
+    // INVITATIONS
+    // ============================================================================
+
+    /**
+     * Invitation collection - managed primarily by Cloud Functions
+     */
+    match /invitations/{invitationId} {
+      // Admins can read invitations for their tenant
+      // Supports both legacy (tenantId + role) and new (tenantMemberships) structures
+      allow read: if isAuthenticated() && (
+                     hasRole(resource.data.tenantId, ['admin']) ||
+                     (belongsToTenant(resource.data.tenantId) && isAdmin())
+                   );
+
+      // Only Cloud Functions can create invitations (via callable function)
+      // Client-side code calls the createInvitation Cloud Function
+      allow create: if false;
+
+      // Only Cloud Functions can update invitations
+      allow update: if false;
+
+      // No one can delete invitations (audit trail)
+      allow delete: if false;
+    }
+
+    // ============================================================================
+    // TENANT METADATA
+    // ============================================================================
+
+    /**
+     * Tenant metadata: read by anyone (needed for initial app load), write by admin only
+     */
+    match /tenantMetadata/{tenantId} {
+      allow read: if true; // Public read - needed before authentication
+      allow write: if isTenantAdmin(tenantId);
+    }
+
+    // ============================================================================
+    // TENANT-SCOPED DATA
+    // ============================================================================
+
+    match /tenants/{tenantId} {
+
+      // Base rule: Authenticated users can read tenant they belong to
+      allow read: if belongsToTenant(tenantId);
+
+      // -------------------------
+      // SETTINGS
+      // -------------------------
+      match /settings/{settingId} {
+        allow read: if belongsToTenant(tenantId);
+        allow write: if isTenantAdmin(tenantId);
+      }
+
+      // -------------------------
+      // PRODUCTS
+      // -------------------------
+      match /products/{productId} {
+        allow read: if belongsToTenant(tenantId);
+        allow write: if isTenantAdmin(tenantId) ||
+                        hasRole(tenantId, ['admin', 'staff']);
+      }
+
+      // -------------------------
+      // CATEGORIES
+      // -------------------------
+      match /categories/{categoryId} {
+        allow read: if belongsToTenant(tenantId);
+        allow write: if isTenantAdmin(tenantId) ||
+                        hasRole(tenantId, ['admin', 'staff']);
+      }
+
+      // -------------------------
+      // ORDERS
+      // -------------------------
+      match /orders/{orderId} {
+        allow read: if belongsToTenant(tenantId);
+
+        // Customers can create orders for their tenant
+        allow create: if belongsToTenant(tenantId) &&
+                         request.resource.data.tenantId == tenantId &&
+                         request.resource.data.userId == request.auth.uid;
+
+        // Staff and admins can update order status
+        allow update: if belongsToTenant(tenantId) &&
+                         hasRole(tenantId, ['admin', 'staff']);
+
+        // Only admins can delete orders
+        allow delete: if isTenantAdmin(tenantId);
+      }
+
+      // -------------------------
+      // TABLES (Phase 2)
+      // -------------------------
+      match /tables/{tableId} {
+        allow read: if belongsToTenant(tenantId);
+        allow write: if isTenantAdmin(tenantId) ||
+                        hasRole(tenantId, ['admin', 'staff']);
+      }
+
+      // -------------------------
+      // RESERVATIONS (Phase 2)
+      // -------------------------
+      match /reservations/{reservationId} {
+        allow read: if belongsToTenant(tenantId);
+
+        // Create: Any authenticated user in tenant can create reservations
+        allow create: if belongsToTenant(tenantId) &&
+                         request.resource.data.tenantId == tenantId &&
+                         request.resource.data.keys().hasAll(['tenantId', 'customerId', 'customerName', 'customerEmail', 'partySize', 'dateTime', 'status']);
+
+        // Update: Staff/admin can update any reservation
+        //         Customers can update their own reservations
+        allow update: if belongsToTenant(tenantId) && (
+                          hasRole(tenantId, ['admin', 'staff']) ||
+                          request.auth.uid == resource.data.customerId
+                        );
+
+        // Delete: Only staff/admin can delete reservations
+        allow delete: if belongsToTenant(tenantId) &&
+                         hasRole(tenantId, ['admin', 'staff']);
+      }
+
+      // -------------------------
+      // PAYMENTS (Phase 4)
+      // -------------------------
+      match /payments/{paymentId} {
+        allow read: if belongsToTenant(tenantId);
+        allow create: if belongsToTenant(tenantId);
+        allow update: if isTenantAdmin(tenantId);
+        allow delete: if isTenantAdmin(tenantId);
+      }
+
+      // -------------------------
+      // CATCH-ALL (for future collections)
+      // -------------------------
+      match /{document=**} {
+        allow read: if belongsToTenant(tenantId);
+        allow write: if isTenantAdmin(tenantId);
+      }
+    }
+
+    // ============================================================================
+    // DENY ALL OTHER ACCESS
+    // ============================================================================
+
+    // Explicitly deny access to any collection not matched above
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

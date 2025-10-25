@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { Category, ProductOption, AppSettings } from '../../types';
 import { styles } from '../../styles';
 import { formatCurrency } from '../../utils';
-import { addCategory, updateCategory, deleteCategory } from '../../firebase/api';
+import { useTenant } from '../../contexts/TenantContext';
+import { addCategory, updateCategory, deleteCategory } from '../../firebase/api-multitenant';
 
 interface CategoryManagerProps {
     categories: Category[];
@@ -10,6 +11,8 @@ interface CategoryManagerProps {
 }
 
 export const CategoryManager: React.FC<CategoryManagerProps> = ({ categories, settings }) => {
+    const { tenant } = useTenant();
+    const tenantId = tenant?.id;
     const [newCategoryName, setNewCategoryName] = useState('');
     const [newOption, setNewOption] = useState<{ categoryId: string, name: string, price: string }>({ categoryId: '', name: '', price: '' });
     const [editingSizePrice, setEditingSizePrice] = useState<{ categoryId: string, sizeName: string, price: string } | null>(null);
@@ -17,23 +20,26 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({ categories, se
 
     const handleAddCategory = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!tenantId) return;
         if (newCategoryName.trim() === '') return;
         const newCatData: Omit<Category, 'id'> = {
             name: newCategoryName.trim(),
             options: [],
         };
-        await addCategory(newCatData);
+        await addCategory(tenantId, newCatData);
         setNewCategoryName('');
     };
-    
+
     const handleDeleteCategory = async (categoryId: string) => {
+        if (!tenantId) return;
         // A robust implementation would first check if any products are using this category.
         if(window.confirm('Are you sure you want to delete this category? This cannot be undone.')) {
-            await deleteCategory(categoryId);
+            await deleteCategory(tenantId, categoryId);
         }
     };
 
     const handleAddOption = async (categoryId: string) => {
+        if (!tenantId) return;
         if (newOption.name.trim() === '' || isNaN(parseFloat(newOption.price))) return;
         
         const categoryToUpdate = categories.find(c => c.id === categoryId);
@@ -55,11 +61,12 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({ categories, se
             options: [...categoryToUpdate.options, optionToAdd]
         };
         
-        await updateCategory(updatedCategory);
+        await updateCategory(tenantId, updatedCategory);
         setNewOption({ categoryId: '', name: '', price: '' });
     };
 
     const handleDeleteOption = async (categoryId: string, optionName: string) => {
+        if (!tenantId) return;
         const categoryToUpdate = categories.find(c => c.id === categoryId);
         if (!categoryToUpdate) return;
 
@@ -68,10 +75,11 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({ categories, se
             options: categoryToUpdate.options.filter(opt => opt.name !== optionName)
         };
 
-        await updateCategory(updatedCategory);
+        await updateCategory(tenantId, updatedCategory);
     };
 
     const handleUpdateSizePrice = async (categoryId: string, sizeName: string, newPrice: number) => {
+        if (!tenantId) return;
         const categoryToUpdate = categories.find(c => c.id === categoryId);
         if (!categoryToUpdate || !categoryToUpdate.sizeOptions) return;
 
@@ -84,11 +92,12 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({ categories, se
             sizeOptions: updatedSizeOptions
         };
 
-        await updateCategory(updatedCategory);
+        await updateCategory(tenantId, updatedCategory);
         setEditingSizePrice(null);
     };
 
     const handleUpdateOptionPrice = async (categoryId: string, optionName: string, newPrice: number) => {
+        if (!tenantId) return;
         const categoryToUpdate = categories.find(c => c.id === categoryId);
         if (!categoryToUpdate) return;
 
@@ -101,7 +110,7 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({ categories, se
             options: updatedOptions
         };
 
-        await updateCategory(updatedCategory);
+        await updateCategory(tenantId, updatedCategory);
         setEditingOptionPrice(null);
     };
 

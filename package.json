@@ -1,12 +1,14 @@
 {
-  "name": "coffee-shop-mpv",
+  "name": "restaurant-management-system",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "migrate-users": "ts-node --esm scripts/migrate-users-to-multitenant.ts",
+    "migrate-users:dry-run": "DRY_RUN=true ts-node --esm scripts/migrate-users-to-multitenant.ts"
   },
   "dependencies": {
     "@google/genai": "^1.25.0",
@@ -21,6 +23,8 @@
   "devDependencies": {
     "@types/node": "^22.14.0",
     "@vitejs/plugin-react": "^5.0.0",
+    "firebase-admin": "^13.5.0",
+    "ts-node": "^10.9.2",
     "typescript": "~5.8.2",
     "vite": "^6.2.0"
   }

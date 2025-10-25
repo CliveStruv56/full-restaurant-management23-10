@@ -2,6 +2,7 @@ import React, { useState, useEffect, CSSProperties } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ShoppingCartIcon } from './Icons';
 import { useAuth } from '../contexts/AuthContext';
+import { useTenant } from '../contexts/TenantContext';
 import { colors, shadows, spacing, transitions, borderRadius } from '../theme';
 
 export const Header = ({
@@ -14,6 +15,7 @@ export const Header = ({
     onTitleClick?: () => void;
 }) => {
     const { user } = useAuth();
+    const { tenant } = useTenant();
     const [scrolled, setScrolled] = useState(false);
 
     useEffect(() => {
@@ -115,7 +117,7 @@ export const Header = ({
                 role={onTitleClick ? 'button' : undefined}
                 aria-label={onTitleClick ? 'Go to menu' : undefined}
             >
-                ☕ The Daily Grind
+                {tenant?.businessName || 'Restaurant Management System'}
             </motion.h1>
             <div style={{ display: 'flex', alignItems: 'center', gap: spacing[4] }}>
                 {user && (

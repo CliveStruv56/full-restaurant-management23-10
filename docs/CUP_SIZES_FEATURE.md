@@ -281,7 +281,7 @@ const total = product.price + sizePrice + addOnsPrice;
 
 ### Potential Improvements
 1. **Editable Size Prices** - Allow admins to edit size prices via UI
-2. **Custom Volumes** - Configure oz/ml per coffee shop
+2. **Custom Volumes** - Configure oz/ml per restaurant
 3. **Extra Large** - Add XL size (20oz / 591ml) option
 4. **Size-Specific Add-ons** - Different add-ons for different sizes
 5. **Default Size Per Product** - Some drinks default to Small instead of Medium

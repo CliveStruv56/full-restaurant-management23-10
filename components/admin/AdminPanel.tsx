@@ -5,14 +5,26 @@ import { ProductManager } from './ProductManager';
 import { SettingsManager } from './SettingsManager';
 import { OrderManager } from './OrderManager';
 import { CategoryManager } from './CategoryManager';
+import { InvitationManager } from './InvitationManager';
 import { DashboardIcon, ProductsIcon, OrdersIcon, SettingsIcon, CategoryIcon, KitchenIcon } from '../Icons';
 import { useAuth } from '../../contexts/AuthContext';
-import { streamCategories, streamOrders, streamProducts, streamSettings } from '../../firebase/api';
+import { useTenant } from '../../contexts/TenantContext';
+import { streamCategories, streamOrders, streamProducts, streamSettings } from '../../firebase/api-multitenant';
 
 interface AdminPanelProps {
     activePage: string;
     setActivePage: React.Dispatch<React.SetStateAction<string>>;
 }
+
+// Team/Users Icon component
+const TeamIcon = () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+        <circle cx="9" cy="7" r="4"></circle>
+        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+    </svg>
+);
 
 const SidebarButton: React.FC<{
     page: string;
@@ -23,10 +35,10 @@ const SidebarButton: React.FC<{
 }> = ({ page, label, icon, activePage, setActivePage }) => {
     const isActive = activePage === page;
     const className = `sidebar-button ${isActive ? 'active' : ''}`;
-    
+
     return (
-        <button 
-            onClick={() => setActivePage(page)} 
+        <button
+            onClick={() => setActivePage(page)}
             style={styles.adminSidebarButton} // Keep base styles
             className={className.trim()}
         >
@@ -39,6 +51,8 @@ const SidebarButton: React.FC<{
 
 export const AdminPanel: React.FC<AdminPanelProps> = ({ activePage, setActivePage }) => {
     const { logout } = useAuth();
+    const { tenant } = useTenant();
+    const tenantId = tenant?.id;
 
     // Data fetching has been moved to the parent App component to be passed down
     // This simplifies the AdminPanel and centralizes data management.
@@ -49,12 +63,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ activePage, setActivePag
     const [loading, setLoading] = React.useState(true);
 
     React.useEffect(() => {
-        const unsubProducts = streamProducts(setProducts);
-        const unsubCategories = streamCategories(setCategories);
-        const unsubOrders = streamOrders(setOrders);
-        const unsubSettings = streamSettings((settingsData) => {
+        if (!tenantId) return;
+        const unsubProducts = streamProducts(tenantId, setProducts);
+        const unsubCategories = streamCategories(tenantId, setCategories);
+        const unsubOrders = streamOrders(tenantId, setOrders);
+        const unsubSettings = streamSettings(tenantId, (settingsData) => {
             setSettings(settingsData);
-            setLoading(false); 
+            setLoading(false);
         });
 
         return () => {
@@ -63,8 +78,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ activePage, setActivePag
             unsubOrders();
             unsubSettings();
         };
-    }, []);
-    
+    }, [tenantId]);
+
     const renderContent = () => {
         if (loading || !settings) {
             return <div style={styles.adminContentPlaceholder}>Loading admin data...</div>;
@@ -77,6 +92,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ activePage, setActivePag
                 return <CategoryManager categories={categories} settings={settings} />;
             case 'orders':
                 return <OrderManager orders={orders} settings={settings} />;
+            case 'team':
+                return <InvitationManager />;
             case 'settings':
                  return <SettingsManager settings={settings} />;
             default:
@@ -119,6 +136,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ activePage, setActivePag
                     <SidebarButton page="categories" label="Categories" icon={<CategoryIcon />} activePage={activePage} setActivePage={setActivePage} />
                     <SidebarButton page="products" label="Products" icon={<ProductsIcon />} activePage={activePage} setActivePage={setActivePage} />
                     <SidebarButton page="orders" label="Orders" icon={<OrdersIcon />} activePage={activePage} setActivePage={setActivePage} />
+                    <SidebarButton page="team" label="Team" icon={<TeamIcon />} activePage={activePage} setActivePage={setActivePage} />
                     <SidebarButton page="settings" label="Settings" icon={<SettingsIcon />} activePage={activePage} setActivePage={setActivePage} />
                 </nav>
                 <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '10px' }}>

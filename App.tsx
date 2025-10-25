@@ -9,15 +9,29 @@ import { CartModal } from './components/CartModal';
 import { BottomNav } from './components/BottomNav';
 import { AdminPanel } from './components/admin/AdminPanel';
 import { ProductOptionsModal } from './components/ProductOptionsModal';
+import { InvitationSignup } from './components/InvitationSignup';
+import { SelfRegister } from './components/SelfRegister';
+import { TenantSelector } from './components/TenantSelector';
 import { useAuth } from './contexts/AuthContext';
 import { AuthPage } from './components/auth/AuthPage';
-import { placeOrder, getCart, getLiveOrdersForUser, streamCategories, streamProducts, streamSettings, updateCart, seedDatabaseIfNeeded, forceSeedDatabase } from './firebase/api';
+import { placeOrder, getCart, getLiveOrdersForUser, streamCategories, streamProducts, streamSettings, updateCart, seedDatabaseIfNeeded, forceSeedDatabase } from './firebase/api-multitenant';
+import { useTenant } from './contexts/TenantContext';
 import { KitchenDisplaySystem } from './components/admin/KitchenDisplaySystem';
 import { useDailySpecial } from './hooks/useDailySpecial';
 import { ToastProvider } from './components/ToastProvider';
+import { FixUserPage } from './components/FixUserPage';
 
 const CustomerApp = () => {
     const { user } = useAuth();
+    const { tenant } = useTenant();
+    const tenantId = tenant?.id;
+
+    // Debug: Log tenantId
+    React.useEffect(() => {
+        console.log('CustomerApp tenant:', tenant);
+        console.log('CustomerApp tenantId:', tenantId);
+    }, [tenant, tenantId]);
+
     // Data state
     const [products, setProducts] = useState<Product[]>([]);
     const [categories, setCategories] = useState<Category[]>([]);
@@ -30,31 +44,33 @@ const CustomerApp = () => {
     const [isCartVisible, setIsCartVisible] = useState(false);
     const [productForOptions, setProductForOptions] = useState<Product | null>(null);
     const [isRewardApplied, setIsRewardApplied] = useState(false);
-    
+
     // Custom Hook
     const { dailySpecial, isSpecialLoading } = useDailySpecial(products);
-    
+
     const isInitialMount = useRef(true);
 
     // Fetch all data on mount
     useEffect(() => {
-        const unsubProducts = streamProducts(setProducts);
-        const unsubCategories = streamCategories(setCategories);
-        const unsubSettings = streamSettings(setSettings);
-        
+        if (!tenantId) return;
+
+        const unsubProducts = streamProducts(tenantId, setProducts);
+        const unsubCategories = streamCategories(tenantId, setCategories);
+        const unsubSettings = streamSettings(tenantId, setSettings);
+
         let unsubUserOrder: (() => void) | undefined;
         if (user) {
             getCart(user.uid).then(setCart);
-            unsubUserOrder = getLiveOrdersForUser(user.uid, setCurrentUserOrder);
+            unsubUserOrder = getLiveOrdersForUser(tenantId, user.uid, setCurrentUserOrder);
         }
 
-        return () => { 
-            unsubProducts(); 
-            unsubCategories(); 
-            unsubSettings(); 
+        return () => {
+            unsubProducts();
+            unsubCategories();
+            unsubSettings();
             if (unsubUserOrder) unsubUserOrder();
         };
-    }, [user]);
+    }, [user, tenantId]);
 
     // Update cart in DB when local cart changes
     useEffect(() => {
@@ -62,11 +78,11 @@ const CustomerApp = () => {
             isInitialMount.current = false;
             return;
         }
-        if (user) {
+        if (user && tenantId) {
             updateCart(user.uid, cart);
         }
-    }, [cart, user]);
-    
+    }, [cart, user, tenantId]);
+
     const cartCount = useMemo(() => cart.reduce((sum, item) => sum + item.quantity, 0), [cart]);
 
     const handleAddToCart = useCallback((product: Product) => {
@@ -98,7 +114,7 @@ const CustomerApp = () => {
             });
         }
     }, [settings, categories]);
-    
+
     const handleAddToCartWithOptions = useCallback((product: Product, selectedOptions: ProductOption[]) => {
         const finalPrice = product.price + selectedOptions.reduce((sum, opt) => sum + opt.price, 0);
         const optionIdentifier = selectedOptions.map(o => o.name).sort().join('-');
@@ -128,10 +144,16 @@ const CustomerApp = () => {
     const handlePlaceOrder = useCallback(async (collectionTime: string, finalTotal: number, rewardItem?: { name: string, price: number }) => {
         if (!user) return;
 
+        if (!tenantId) {
+            console.error('Cannot place order: tenantId is undefined');
+            toast.error('Unable to place order. Please refresh the page and try again.');
+            return;
+        }
+
         const loadingToast = toast.loading('Placing your order...');
 
         try {
-            await placeOrder(user.uid, cart, finalTotal, collectionTime, rewardItem);
+            await placeOrder(tenantId, user.uid, cart, finalTotal, collectionTime, rewardItem);
             toast.success('Order placed successfully!', { id: loadingToast });
             setCart([]);
             setIsCartVisible(false);
@@ -141,8 +163,8 @@ const CustomerApp = () => {
             toast.error('Failed to place order. Please try again.', { id: loadingToast });
             console.error('Order placement error:', error);
         }
-    }, [cart, user]);
-    
+    }, [cart, user, tenantId]);
+
     const categoryForProductWithOptions = useMemo(() => {
         if (!productForOptions) return null;
         return categories.find(c => c.id === productForOptions.categoryId) || null;
@@ -176,9 +198,9 @@ const CustomerApp = () => {
             <main>
                 {renderScreen()}
             </main>
-            <CartModal 
-                isOpen={isCartVisible} 
-                onClose={() => setIsCartVisible(false)} 
+            <CartModal
+                isOpen={isCartVisible}
+                onClose={() => setIsCartVisible(false)}
                 cart={cart}
                 onUpdateQuantity={handleUpdateQuantity}
                 onPlaceOrder={handlePlaceOrder}
@@ -203,24 +225,71 @@ const CustomerApp = () => {
 };
 
 const App = () => {
-    const { user, userRole, loading: authLoading } = useAuth();
+    const { user, userRole, tenantMemberships, loading: authLoading } = useAuth();
+    const { tenant } = useTenant();
+    const tenantId = tenant?.id;
     const [adminPage, setAdminPage] = useState('dashboard');
     const [isSeeding, setIsSeeding] = useState(true);
+    const [needsUserFix, setNeedsUserFix] = useState(false);
+
+    // Check URL path for special routes
+    const path = window.location.pathname;
+    const isInvitationSignup = path.startsWith('/signup/');
+    const isSelfRegister = path === '/register';
+    const isFixUserPage = path === '/fix-user';
+
+    // Extract invitation token from URL if on signup page
+    const invitationToken = isInvitationSignup ? path.split('/signup/')[1] : null;
+
+    // Show tenant selector if user has multiple tenants and is logged in
+    const shouldShowTenantSelector =
+        !authLoading &&
+        user &&
+        tenantMemberships &&
+        Object.keys(tenantMemberships).length > 1 &&
+        !isInvitationSignup &&
+        !isSelfRegister &&
+        !isFixUserPage;
+
+    // Check if we should show the fix user page
+    useEffect(() => {
+        if (isFixUserPage) {
+            setNeedsUserFix(true);
+            setIsSeeding(false);
+        }
+    }, [isFixUserPage]);
 
     // Effect to run the seeding logic on initial app load
     useEffect(() => {
+        if (needsUserFix || isInvitationSignup || isSelfRegister) {
+            setIsSeeding(false);
+            return; // Skip seeding for special pages
+        }
+
         const initializeApp = async () => {
             try {
-                await seedDatabaseIfNeeded();
-            } catch (error) {
+                await seedDatabaseIfNeeded(tenantId);
+            } catch (error: any) {
                 console.error("Failed to initialize app:", error);
-                // Here you could show a more user-friendly error message
+
+                // Check if error is permission-related AND user doesn't have tenantId
+                // If user has tenantId but still getting permission error, it's likely they need admin role
+                if (error?.message?.includes('permission') || error?.code === 'permission-denied') {
+                    // Only show fix page if user doesn't have tenantId
+                    if (user && !user.tenantId) {
+                        console.log('Permission error detected - user missing tenantId');
+                        setNeedsUserFix(true);
+                    } else {
+                        console.log('Permission error but user has tenantId - likely needs admin role for seeding');
+                        // Continue anyway - the app can work without seeding if data exists
+                    }
+                }
             } finally {
                 setIsSeeding(false);
             }
         };
         initializeApp();
-    }, []); // Empty array ensures this runs only once
+    }, [tenantId, needsUserFix, user, isInvitationSignup, isSelfRegister]); // Re-run if tenant or user changes
 
     useEffect(() => {
         const rootElement = document.getElementById('root');
@@ -235,9 +304,40 @@ const App = () => {
         }
     }, [userRole, adminPage]);
 
+    // Handle invitation signup page (public, no auth required)
+    if (isInvitationSignup && invitationToken) {
+        return (
+            <ToastProvider>
+                <InvitationSignup token={invitationToken} />
+            </ToastProvider>
+        );
+    }
+
+    // Handle self-registration page (public, no auth required)
+    if (isSelfRegister) {
+        return (
+            <ToastProvider>
+                <SelfRegister />
+            </ToastProvider>
+        );
+    }
 
     if (authLoading || isSeeding) {
         return <div style={{textAlign: 'center', padding: '50px'}}>Initializing Shop...</div>;
+    }
+
+    // Show fix user page if needed (only if user is logged in)
+    if (needsUserFix && user) {
+        return <FixUserPage />;
+    }
+
+    // Show tenant selector if user has multiple tenants
+    if (shouldShowTenantSelector) {
+        return (
+            <ToastProvider>
+                <TenantSelector />
+            </ToastProvider>
+        );
     }
 
     return (

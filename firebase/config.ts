@@ -1,7 +1,8 @@
 import { initializeApp } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
+import { getFirestore, enableIndexedDbPersistence } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import { getStorage } from "firebase/storage";
+import { getFunctions } from "firebase/functions";
 
 // --- IMPORTANT ---
 // 1. Go to your Firebase project console.
@@ -25,9 +26,25 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
-// Get Firestore, Auth, and Storage instances
+// Get Firestore, Auth, Storage, and Functions instances
 const db = getFirestore(app);
 const auth = getAuth(app);
 const storage = getStorage(app);
+const functions = getFunctions(app);
 
-export { db, auth, storage };
+// Enable offline persistence for Firestore
+enableIndexedDbPersistence(db, {
+  synchronizeTabs: true
+}).catch((err) => {
+  if (err.code === 'failed-precondition') {
+    console.warn('⚠️ Offline persistence failed: Multiple tabs open. Only one tab can enable persistence.');
+  } else if (err.code === 'unimplemented') {
+    console.warn('⚠️ Offline persistence not supported in this browser.');
+  } else {
+    console.error('❌ Error enabling offline persistence:', err);
+  }
+});
+
+console.log('✅ Firebase initialized with offline persistence');
+
+export { db, auth, storage, functions };

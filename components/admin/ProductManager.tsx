@@ -5,7 +5,8 @@ import { styles } from '../../styles';
 import { formatCurrency } from '../../utils';
 import { ProductForm } from './ProductForm';
 import { BulkUploadModal } from './BulkUploadModal';
-import { addProduct, updateProduct, deleteProduct } from '../../firebase/api';
+import { useTenant } from '../../contexts/TenantContext';
+import { addProduct, updateProduct, deleteProduct } from '../../firebase/api-multitenant';
 
 interface ProductManagerProps {
     products: Product[];
@@ -14,6 +15,8 @@ interface ProductManagerProps {
 }
 
 export const ProductManager: React.FC<ProductManagerProps> = ({ products, categories, settings }) => {
+    const { tenant } = useTenant();
+    const tenantId = tenant?.id;
     const [isFormVisible, setIsFormVisible] = useState(false);
     const [isBulkUploadModalOpen, setIsBulkUploadModalOpen] = useState(false);
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -21,7 +24,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, catego
     const categoryMap = useMemo(() => {
         return new Map(categories.map(cat => [cat.id, cat.name]));
     }, [categories]);
-    
+
     const handleAddClick = () => {
         setSelectedProduct(null);
         setIsFormVisible(true);
@@ -31,12 +34,16 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, catego
         setSelectedProduct(product);
         setIsFormVisible(true);
     };
-    
+
     const handleDelete = async (productId: string) => {
+        if (!tenantId) {
+            toast.error('Unable to delete: Tenant not loaded');
+            return;
+        }
         if (window.confirm('Are you sure you want to delete this product?')) {
             const deleteToast = toast.loading('Deleting product...');
             try {
-                await deleteProduct(productId);
+                await deleteProduct(tenantId, productId);
                 toast.success('Product deleted successfully!', { id: deleteToast });
             } catch (error) {
                 console.error("Error deleting product:", error);
@@ -46,11 +53,15 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, catego
     };
 
     const handleSave = async (productData: Product | Omit<Product, 'id'>) => {
+        if (!tenantId) {
+            toast.error('Unable to save: Tenant not loaded');
+            throw new Error('Tenant not loaded');
+        }
         try {
             if ('id' in productData) {
-                await updateProduct(productData);
+                await updateProduct(tenantId, productData);
             } else {
-                await addProduct(productData);
+                await addProduct(tenantId, productData);
             }
             // Success toast is handled in ProductForm
         } catch (error) {

@@ -1,11 +1,11 @@
 {
-  "name": "The Daily Grind",
-  "short_name": "Daily Grind",
+  "name": "Restaurant Management System",
+  "short_name": "RMS",
   "start_url": ".",
   "display": "standalone",
   "background_color": "#f9f9f9",
   "theme_color": "#4a4e69",
-  "description": "Order your favorite coffee and pastries from The Daily Grind.",
+  "description": "Multi-tenant restaurant management and ordering system.",
   "icons": [
     {
       "src": "icons/icon-192x192.png",

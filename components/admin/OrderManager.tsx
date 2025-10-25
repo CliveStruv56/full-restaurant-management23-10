@@ -2,7 +2,8 @@ import React from 'react';
 import { Order, AppSettings } from '../../types';
 import { styles } from '../../styles';
 import { formatCurrency } from '../../utils';
-import { updateOrderStatus } from '../../firebase/api';
+import { useTenant } from '../../contexts/TenantContext';
+import { updateOrderStatus } from '../../firebase/api-multitenant';
 
 interface OrderManagerProps {
     orders: Order[];
@@ -21,9 +22,12 @@ const formatDisplayTime = (isoString: string) => {
 };
 
 export const OrderManager: React.FC<OrderManagerProps> = ({ orders, settings }) => {
+    const { tenant } = useTenant();
+    const tenantId = tenant?.id;
 
     const handleStatusChange = async (orderId: string, newStatus: Order['status']) => {
-        await updateOrderStatus(orderId, newStatus);
+        if (!tenantId) return;
+        await updateOrderStatus(tenantId, orderId, newStatus);
     };
     
     const getStatusStyle = (status: Order['status']): React.CSSProperties => {
@@ -61,6 +65,7 @@ export const OrderManager: React.FC<OrderManagerProps> = ({ orders, settings }) 
                         <thead>
                             <tr>
                                 <th style={styles.adminTh}>Order ID</th>
+                                <th style={styles.adminTh}>Customer</th>
                                 <th style={styles.adminTh}>Collection Time</th>
                                 <th style={styles.adminTh}>Items</th>
                                 <th style={styles.adminTh}>Total</th>
@@ -72,6 +77,7 @@ export const OrderManager: React.FC<OrderManagerProps> = ({ orders, settings }) 
                             {sortedOrders.map(order => (
                                 <tr key={order.id}>
                                     <td style={{...styles.adminTd, verticalAlign: 'top'}}>#{order.id.slice(-6)}</td>
+                                    <td style={{...styles.adminTd, verticalAlign: 'top', fontWeight: 600}}>{order.customerName || 'Guest'}</td>
                                     <td style={{...styles.adminTd, verticalAlign: 'top'}}>{formatDisplayTime(order.collectionTime)}</td>
                                     <td style={styles.adminTd}>
                                         {order.items.map(item => (

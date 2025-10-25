@@ -1,10 +1,12 @@
 import React from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useTenant } from '../contexts/TenantContext';
 import { styles } from '../styles';
 import { colors, shadows } from '../theme';
 
 export const AccountScreen: React.FC = () => {
     const { user, logout } = useAuth();
+    const { tenant } = useTenant();
 
     const handleLogout = async () => {
         if (window.confirm('Are you sure you want to logout?')) {
@@ -113,8 +115,8 @@ export const AccountScreen: React.FC = () => {
                 color: colors.text.secondary,
                 fontSize: '14px',
             }}>
-                <p style={{ margin: '4px 0' }}>The Daily Grind</p>
-                <p style={{ margin: '4px 0', fontSize: '12px', opacity: 0.7 }}>Version 3.0</p>
+                <p style={{ margin: '4px 0' }}>{tenant?.businessName || 'Restaurant Management System'}</p>
+                <p style={{ margin: '4px 0', fontSize: '12px', opacity: 0.7 }}>Version 1.0</p>
             </div>
         </div>
     );

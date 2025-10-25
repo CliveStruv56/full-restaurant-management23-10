@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { AppSettings, DaySetting } from '../../types';
 import { styles } from '../../styles';
-import { updateSettings } from '../../firebase/api';
+import { useTenant } from '../../contexts/TenantContext';
+import { updateSettings } from '../../firebase/api-multitenant';
 
 interface SettingsManagerProps {
     settings: AppSettings;
@@ -37,6 +38,8 @@ const ToggleSwitch = ({ isChecked, onChange }: { isChecked: boolean, onChange: (
 };
 
 export const SettingsManager: React.FC<SettingsManagerProps> = ({ settings }) => {
+    const { tenant } = useTenant();
+    const tenantId = tenant?.id;
     const [formData, setFormData] = useState(settings);
     const [showSuccess, setShowSuccess] = useState(false);
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
@@ -97,7 +100,11 @@ export const SettingsManager: React.FC<SettingsManagerProps> = ({ settings }) =>
 
     const handleSubmit = async (e?: React.FormEvent) => {
         if (e) e.preventDefault();
-        await updateSettings(formData);
+        if (!tenantId) {
+            console.error('Unable to save: Tenant not loaded');
+            return;
+        }
+        await updateSettings(tenantId, formData);
         setHasUnsavedChanges(false);
         setShowSuccess(true);
         setTimeout(() => setShowSuccess(false), 3000);

@@ -1,8 +1,8 @@
-# Coffee Shop PWA: Project Specification
+# Restaurant Management System: Project Specification
 
 ## 1. Project Overview
 
-The Coffee Shop PWA is a modern, full-featured Progressive Web Application designed for coffee shops and small cafes to manage their entire workflow, from customer ordering to kitchen operations and administrative oversight. It provides a seamless, real-time experience for customers, staff, and administrators.
+The Restaurant Management System is a modern, full-featured Progressive Web Application designed for restaurants and small cafes to manage their entire workflow, from customer ordering to kitchen operations and administrative oversight. It provides a seamless, real-time experience for customers, staff, and administrators.
 
 The application is built as a Single Page Application (SPA) and features role-based access control, ensuring users only see the interface relevant to their tasks.
 

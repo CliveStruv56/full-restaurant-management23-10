@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Order } from '../../types';
 import { styles } from '../../styles';
-import { streamOrders, updateOrderStatus } from '../../firebase/api';
+import { streamOrders, updateOrderStatus } from '../../firebase/api-multitenant';
 import { useAuth } from '../../contexts/AuthContext';
+import { useTenant } from '../../contexts/TenantContext';
 
 // --- PROPS INTERFACE ---
 interface KDSProps {
@@ -119,6 +120,9 @@ const OrderCard: React.FC<{
                     {formatElapsedTime(order.orderTime, currentTime)}
                 </span>
             </div>
+            <p style={{fontSize: '1rem', fontWeight: 700, margin: '8px 0', color: isOverdue ? '#1f2937' : '#2563eb'}}>
+                👤 {order.customerName || 'Guest'}
+            </p>
             {isOverdue && (
                 <div style={{
                     backgroundColor: '#dc2626',
@@ -211,15 +215,18 @@ const ArchiveModal: React.FC<{
 // --- MAIN COMPONENT ---
 export const KitchenDisplaySystem: React.FC<KDSProps> = ({ onBackToAdmin }) => {
     const { logout } = useAuth();
+    const { tenant } = useTenant();
+    const tenantId = tenant?.id;
     const [orders, setOrders] = useState<Order[]>([]);
     const [currentTime, setCurrentTime] = useState(new Date());
     const [isArchiveVisible, setIsArchiveVisible] = useState(false);
 
     // Subscribe to orders stream
     useEffect(() => {
-        const unsubscribe = streamOrders(setOrders);
+        if (!tenantId) return;
+        const unsubscribe = streamOrders(tenantId, setOrders);
         return () => unsubscribe();
-    }, []);
+    }, [tenantId]);
 
     // Update current time every 10 seconds to refresh elapsed times and urgency
     useEffect(() => {
@@ -230,7 +237,8 @@ export const KitchenDisplaySystem: React.FC<KDSProps> = ({ onBackToAdmin }) => {
     }, []);
 
     const handleUpdateStatus = (orderId: string, newStatus: Order['status']) => {
-        updateOrderStatus(orderId, newStatus);
+        if (!tenantId) return;
+        updateOrderStatus(tenantId, orderId, newStatus);
     };
 
     const { newOrders, preparingOrders, readyOrders, archivedOrders } = useMemo(() => {
