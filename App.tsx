@@ -14,18 +14,25 @@ import { SelfRegister } from './components/SelfRegister';
 import { TenantSelector } from './components/TenantSelector';
 import { useAuth } from './contexts/AuthContext';
 import { AuthPage } from './components/auth/AuthPage';
-import { placeOrder, getCart, getLiveOrdersForUser, streamCategories, streamProducts, streamSettings, updateCart, seedDatabaseIfNeeded, forceSeedDatabase } from './firebase/api-multitenant';
+import { placeOrder, getCart, getLiveOrdersForUser, streamCategories, streamProducts, streamSettings, updateCart, seedDatabaseIfNeeded, forceSeedDatabase, linkGuestOrders } from './firebase/api-multitenant';
 import { useTenant } from './contexts/TenantContext';
+import { CustomerJourneyProvider, useCustomerJourney } from './contexts/CustomerJourneyContext';
 import { KitchenDisplaySystem } from './components/admin/KitchenDisplaySystem';
 import { useDailySpecial } from './hooks/useDailySpecial';
 import { ToastProvider } from './components/ToastProvider';
 import { FixUserPage } from './components/FixUserPage';
 import { OfflineIndicator } from './components/OfflineIndicator';
+import { LandingPage } from './components/LandingPage';
+import { IntentSelection } from './components/IntentSelection';
+import { OrderTypeSelection } from './components/OrderTypeSelection';
+import { ReservationFlow } from './components/ReservationFlow';
+import { AccountCreationPrompt } from './components/AccountCreationPrompt';
 
 const CustomerApp = () => {
     const { user } = useAuth();
     const { tenant } = useTenant();
     const tenantId = tenant?.id;
+    const { journey } = useCustomerJourney();
 
     // Debug: Log tenantId
     React.useEffect(() => {
@@ -46,8 +53,9 @@ const CustomerApp = () => {
     const [productForOptions, setProductForOptions] = useState<Product | null>(null);
     const [isRewardApplied, setIsRewardApplied] = useState(false);
 
-    // Custom Hook
-    const { dailySpecial, isSpecialLoading } = useDailySpecial(products);
+    // Account creation prompt state (for guest checkout)
+    const [showAccountPrompt, setShowAccountPrompt] = useState(false);
+    const [guestInfoForPrompt, setGuestInfoForPrompt] = useState<{ email?: string; phone?: string } | null>(null);
 
     const isInitialMount = useRef(true);
 
@@ -85,6 +93,27 @@ const CustomerApp = () => {
     }, [cart, user, tenantId]);
 
     const cartCount = useMemo(() => cart.reduce((sum, item) => sum + item.quantity, 0), [cart]);
+
+    // Filter products based on order type (dine-in vs takeaway)
+    const filteredProducts = useMemo(() => {
+        // If no order type selected yet, show all products
+        if (!journey.orderType) {
+            return products;
+        }
+
+        return products.filter(product => {
+            // If product has no availability restriction, show it for all order types (backward compatibility)
+            if (!product.availableFor || product.availableFor === 'both') {
+                return true;
+            }
+
+            // Otherwise, only show if it matches the current order type
+            return product.availableFor === journey.orderType;
+        });
+    }, [products, journey.orderType]);
+
+    // Custom Hook - Use filtered products for daily special
+    const { dailySpecial, isSpecialLoading } = useDailySpecial(filteredProducts);
 
     const handleAddToCart = useCallback((product: Product) => {
         if (!settings?.storeOpen) {
@@ -148,7 +177,8 @@ const CustomerApp = () => {
         orderType: 'takeaway' | 'dine-in' | 'delivery',
         tableNumber?: number,
         guestCount?: number,
-        rewardItem?: { name: string, price: number }
+        rewardItem?: { name: string, price: number },
+        guestInfo?: { name: string; email?: string; phone?: string }
     ) => {
         if (!user) return;
 
@@ -161,12 +191,26 @@ const CustomerApp = () => {
         const loadingToast = toast.loading('Placing your order...');
 
         try {
-            await placeOrder(tenantId, user.uid, cart, finalTotal, collectionTime, orderType, tableNumber, guestCount, rewardItem);
+            await placeOrder(tenantId, user.uid, cart, finalTotal, collectionTime, orderType, tableNumber, guestCount, rewardItem, guestInfo);
             toast.success('Order placed successfully!', { id: loadingToast });
             setCart([]);
             setIsCartVisible(false);
             setActiveScreen('order');
             setIsRewardApplied(false);
+
+            // Show account creation prompt for anonymous/guest users
+            const isAnonymousUser = user && 'isAnonymous' in user && (user as any).isAnonymous;
+            if (isAnonymousUser && guestInfo) {
+                // Store guest info for the prompt
+                setGuestInfoForPrompt({
+                    email: guestInfo.email,
+                    phone: guestInfo.phone
+                });
+                // Show the account creation prompt after a brief delay
+                setTimeout(() => {
+                    setShowAccountPrompt(true);
+                }, 1000);
+            }
         } catch (error) {
             toast.error('Failed to place order. Please try again.', { id: loadingToast });
             console.error('Order placement error:', error);
@@ -178,6 +222,30 @@ const CustomerApp = () => {
         return categories.find(c => c.id === productForOptions.categoryId) || null;
     }, [productForOptions, categories]);
 
+    // Handle account creation from prompt
+    const handleAccountCreationComplete = async () => {
+        if (!user || !tenantId) return;
+
+        try {
+            // Link any guest orders to the newly created account
+            const linkedCount = await linkGuestOrders(tenantId, user.uid);
+            if (linkedCount > 0) {
+                toast.success(`${linkedCount} order(s) linked to your account!`);
+            }
+        } catch (error) {
+            console.error('Error linking guest orders:', error);
+            // Don't show error to user - account was still created successfully
+        } finally {
+            setShowAccountPrompt(false);
+            setGuestInfoForPrompt(null);
+        }
+    };
+
+    const handleAccountCreationSkip = () => {
+        setShowAccountPrompt(false);
+        setGuestInfoForPrompt(null);
+    };
+
     if (!settings) {
         return <div>Loading shop...</div>;
     }
@@ -185,7 +253,7 @@ const CustomerApp = () => {
     const renderScreen = () => {
         switch (activeScreen) {
             case 'menu':
-                return <MenuScreen products={products} onAddToCart={handleAddToCart} categories={categories} settings={settings} dailySpecial={dailySpecial} isSpecialLoading={isSpecialLoading} />;
+                return <MenuScreen products={filteredProducts} onAddToCart={handleAddToCart} categories={categories} settings={settings} dailySpecial={dailySpecial} isSpecialLoading={isSpecialLoading} />;
             case 'order':
                 return <OrderScreen order={currentUserOrder} loyaltyPoints={user?.loyaltyPoints ?? 0} settings={settings} />;
             case 'account':
@@ -202,6 +270,7 @@ const CustomerApp = () => {
                 cartCount={cartCount}
                 onCartClick={() => setIsCartVisible(true)}
                 onTitleClick={() => setActiveScreen('menu')}
+                tableNumber={journey.tableNumber}
             />
             <main>
                 {renderScreen()}
@@ -217,6 +286,7 @@ const CustomerApp = () => {
                 loyaltyPoints={user?.loyaltyPoints ?? 0}
                 isRewardApplied={isRewardApplied}
                 onRewardToggle={setIsRewardApplied}
+                initialOrderType={journey.orderType}
             />
             {productForOptions && categoryForProductWithOptions && (
                 <ProductOptionsModal
@@ -227,9 +297,72 @@ const CustomerApp = () => {
                     settings={settings}
                 />
             )}
+            {showAccountPrompt && (
+                <AccountCreationPrompt
+                    guestEmail={guestInfoForPrompt?.email}
+                    guestPhone={guestInfoForPrompt?.phone}
+                    onComplete={handleAccountCreationComplete}
+                    onSkip={handleAccountCreationSkip}
+                />
+            )}
             <BottomNav active={activeScreen} onNavClick={setActiveScreen} />
         </>
     );
+};
+
+/**
+ * CustomerFlowRouter Component
+ *
+ * Routes the customer through the correct flow based on their journey state:
+ * 1. QR code entry -> Skip to menu (dine-in, table pre-filled)
+ * 2. No intent -> Show landing page
+ * 3. Intent "later" -> Show reservation flow (placeholder for now)
+ * 4. Intent "now" but no order type -> Show order type selection
+ * 5. Order type selected -> Show menu
+ */
+const CustomerFlowRouter: React.FC = () => {
+    const { journey, setIntent, setOrderType, resetJourney } = useCustomerJourney();
+    const { user } = useAuth();
+
+    // Reset journey when user logs in/out to show landing page
+    React.useEffect(() => {
+        // Skip reset if entering via QR code
+        if (journey.entryPoint !== 'qr-code') {
+            resetJourney();
+        }
+    }, [user?.uid]); // Trigger on user change (login/logout)
+
+    // QR code entry: Skip directly to menu
+    if (journey.entryPoint === 'qr-code') {
+        return <CustomerApp />;
+    }
+
+    // No intent selected yet: Show landing page with three options
+    if (!journey.customerIntent) {
+        return (
+            <LandingPage
+                onOrderNow={(type) => {
+                    setIntent('now');
+                    setOrderType(type);
+                }}
+                onMakeReservation={() => setIntent('later')}
+            />
+        );
+    }
+
+    // Intent is "later": Show reservation flow
+    if (journey.customerIntent === 'later') {
+        return <ReservationFlow />;
+    }
+
+    // Intent is "now" and order type selected: Show menu
+    if (journey.orderType) {
+        return <CustomerApp />;
+    }
+
+    // Fallback: Should not reach here, but reset if something goes wrong
+    resetJourney();
+    return null;
 };
 
 const App = () => {
@@ -350,47 +483,79 @@ const App = () => {
 
     return (
         <ToastProvider>
-            {!user ? (
-                <AuthPage />
-            ) : userRole === 'staff' ? (
-                <KitchenDisplaySystem />
-            ) : userRole === 'admin' ? (
-                adminPage === 'kitchen' ? (
-                    <KitchenDisplaySystem onBackToAdmin={() => setAdminPage('dashboard')} />
-                ) : adminPage === 'customer' ? (
-                    <>
-                        <CustomerApp />
-                        {/* Floating back to admin button */}
-                        <button
-                            onClick={() => setAdminPage('dashboard')}
-                            style={{
-                                position: 'fixed',
-                                bottom: '90px',
-                                right: '20px',
-                                zIndex: 10000,
-                                padding: '12px 20px',
-                                backgroundColor: '#343a40',
-                                color: 'white',
-                                border: 'none',
-                                borderRadius: '8px',
-                                cursor: 'pointer',
-                                fontSize: '14px',
-                                fontWeight: 600,
-                                boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-                            }}
-                        >
-                            ← Back to Admin
-                        </button>
-                    </>
+            <CustomerJourneyProvider>
+                <QRCodeEntryHandler />
+                {!user ? (
+                    <AuthPage />
+                ) : userRole === 'staff' ? (
+                    <KitchenDisplaySystem />
+                ) : userRole === 'admin' ? (
+                    adminPage === 'kitchen' ? (
+                        <KitchenDisplaySystem onBackToAdmin={() => setAdminPage('dashboard')} />
+                    ) : adminPage === 'customer' ? (
+                        <>
+                            <CustomerApp />
+                            {/* Floating back to admin button */}
+                            <button
+                                onClick={() => setAdminPage('dashboard')}
+                                style={{
+                                    position: 'fixed',
+                                    bottom: '90px',
+                                    right: '20px',
+                                    zIndex: 10000,
+                                    padding: '12px 20px',
+                                    backgroundColor: '#343a40',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '8px',
+                                    cursor: 'pointer',
+                                    fontSize: '14px',
+                                    fontWeight: 600,
+                                    boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                                }}
+                            >
+                                Back to Admin
+                            </button>
+                        </>
+                    ) : (
+                        <AdminPanel activePage={adminPage} setActivePage={setAdminPage} />
+                    )
                 ) : (
-                    <AdminPanel activePage={adminPage} setActivePage={setAdminPage} />
-                )
-            ) : (
-                <CustomerApp />
-            )}
-            <OfflineIndicator />
+                    <CustomerFlowRouter />
+                )}
+                <OfflineIndicator />
+            </CustomerJourneyProvider>
         </ToastProvider>
     );
+};
+
+/**
+ * QRCodeEntryHandler Component
+ *
+ * Parses URL query parameters on mount to detect QR code table entries.
+ * If ?table={number} is present, it automatically sets the journey state
+ * to skip navigation screens and go directly to the menu.
+ */
+const QRCodeEntryHandler: React.FC = () => {
+    const { setTableNumber } = useCustomerJourney();
+
+    useEffect(() => {
+        // Parse URL query parameters
+        const params = new URLSearchParams(window.location.search);
+        const tableParam = params.get('table');
+
+        if (tableParam) {
+            const tableNumber = parseInt(tableParam, 10);
+            if (!isNaN(tableNumber) && tableNumber > 0) {
+                console.log(`QR code entry detected: Table ${tableNumber}`);
+                setTableNumber(tableNumber);
+            } else {
+                console.warn(`Invalid table number in URL: ${tableParam}`);
+            }
+        }
+    }, []); // Run only once on mount
+
+    return null; // This component doesn't render anything
 };
 
 export default App;

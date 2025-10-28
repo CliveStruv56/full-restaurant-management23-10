@@ -5,6 +5,7 @@ import { styles } from '../styles';
 import { formatCurrency, generateAvailableSlots } from '../utils';
 import { ShoppingCartIcon } from './Icons';
 import { DateSlotsModal } from './DateSlotsModal';
+import { FloorPlanDisplay } from './customer/FloorPlanDisplay';
 
 interface CartModalProps {
     isOpen: boolean;
@@ -24,6 +25,7 @@ interface CartModalProps {
     loyaltyPoints: number;
     isRewardApplied: boolean;
     onRewardToggle: (isApplied: boolean) => void;
+    initialOrderType?: 'takeaway' | 'dine-in' | 'delivery';
 }
 
 const TimeSlotPicker = ({ settings, orders, selectedTime, onSelectTime }: { settings: AppSettings, orders: Order[], selectedTime: string, onSelectTime: (time: string) => void }) => {
@@ -117,11 +119,29 @@ const TimeSlotPicker = ({ settings, orders, selectedTime, onSelectTime }: { sett
 };
 
 
-export const CartModal: React.FC<CartModalProps> = ({ isOpen, onClose, cart, onUpdateQuantity, onPlaceOrder, settings, orders, loyaltyPoints, isRewardApplied, onRewardToggle }) => {
+export const CartModal: React.FC<CartModalProps> = ({ isOpen, onClose, cart, onUpdateQuantity, onPlaceOrder, settings, orders, loyaltyPoints, isRewardApplied, onRewardToggle, initialOrderType }) => {
     const [selectedTime, setSelectedTime] = useState('');
-    const [orderType, setOrderType] = useState<'takeaway' | 'dine-in' | 'delivery'>('takeaway');
+    const [orderType, setOrderType] = useState<'takeaway' | 'dine-in' | 'delivery'>(initialOrderType || 'takeaway');
     const [tableNumber, setTableNumber] = useState<number | undefined>(undefined);
     const [guestCount, setGuestCount] = useState<number>(2);
+    const [showFloorPlan, setShowFloorPlan] = useState(false);
+
+    // Update orderType if initialOrderType changes (when user navigates from landing page)
+    useEffect(() => {
+        if (initialOrderType) {
+            setOrderType(initialOrderType);
+        }
+    }, [initialOrderType]);
+
+    // Auto-set time for dine-in orders (already in restaurant)
+    useEffect(() => {
+        if (orderType === 'dine-in' && !selectedTime) {
+            // Set to current time for dine-in
+            const now = new Date();
+            const isoString = now.toISOString();
+            setSelectedTime(isoString);
+        }
+    }, [orderType, selectedTime]);
     
     const subtotal = useMemo(() => cart.reduce((sum, item) => sum + item.price * item.quantity, 0), [cart]);
     
@@ -136,10 +156,22 @@ export const CartModal: React.FC<CartModalProps> = ({ isOpen, onClose, cart, onU
     const discount = isRewardApplied && rewardEligibleItem ? rewardEligibleItem.price : 0;
     const finalTotal = subtotal - discount;
 
+    const handleTableSelectFromFloorPlan = (selectedTableNumber: number) => {
+        setTableNumber(selectedTableNumber);
+        setShowFloorPlan(false);
+        toast.success(`Table ${selectedTableNumber} selected`);
+    };
+
     const handlePlaceOrderClick = () => {
-        if (!selectedTime) {
+        // For takeaway orders, time selection is required
+        if (orderType === 'takeaway' && !selectedTime) {
             toast.error("Please select a collection time.");
             return;
+        }
+        // For dine-in, time is auto-set
+        if (orderType === 'dine-in' && !selectedTime) {
+            const now = new Date();
+            setSelectedTime(now.toISOString());
         }
         if (cart.length === 0) return;
 
@@ -225,12 +257,13 @@ export const CartModal: React.FC<CartModalProps> = ({ isOpen, onClose, cart, onU
                                 </div>
                             </div>
 
-                            {/* Order Type Selection */}
+                            {/* Order Type Selection - Locked if initialOrderType is provided */}
                             <div style={{marginTop: '20px'}}>
-                                <label style={styles.adminLabel}>Order Type</label>
+                                <label style={styles.adminLabel}>Order Type {initialOrderType && <span style={{fontSize: '12px', color: '#6b7280', fontWeight: 'normal'}}>(Selected from menu)</span>}</label>
                                 <div style={{display: 'flex', gap: '10px', marginTop: '8px'}}>
                                     <button
-                                        onClick={() => setOrderType('takeaway')}
+                                        onClick={() => !initialOrderType && setOrderType('takeaway')}
+                                        disabled={!!initialOrderType}
                                         style={{
                                             flex: 1,
                                             padding: '12px',
@@ -238,15 +271,17 @@ export const CartModal: React.FC<CartModalProps> = ({ isOpen, onClose, cart, onU
                                             color: orderType === 'takeaway' ? 'white' : '#374151',
                                             border: 'none',
                                             borderRadius: '8px',
-                                            cursor: 'pointer',
+                                            cursor: initialOrderType ? 'not-allowed' : 'pointer',
                                             fontWeight: 600,
                                             fontSize: '14px',
+                                            opacity: initialOrderType && orderType !== 'takeaway' ? 0.5 : 1,
                                         }}
                                     >
-                                        Takeaway
+                                        🛍️ Takeaway
                                     </button>
                                     <button
-                                        onClick={() => setOrderType('dine-in')}
+                                        onClick={() => !initialOrderType && setOrderType('dine-in')}
+                                        disabled={!!initialOrderType}
                                         style={{
                                             flex: 1,
                                             padding: '12px',
@@ -254,12 +289,13 @@ export const CartModal: React.FC<CartModalProps> = ({ isOpen, onClose, cart, onU
                                             color: orderType === 'dine-in' ? 'white' : '#374151',
                                             border: 'none',
                                             borderRadius: '8px',
-                                            cursor: 'pointer',
+                                            cursor: initialOrderType ? 'not-allowed' : 'pointer',
                                             fontWeight: 600,
                                             fontSize: '14px',
+                                            opacity: initialOrderType && orderType !== 'dine-in' ? 0.5 : 1,
                                         }}
                                     >
-                                        Dine-In
+                                        🍽️ Dine-In
                                     </button>
                                 </div>
                             </div>
@@ -287,6 +323,27 @@ export const CartModal: React.FC<CartModalProps> = ({ isOpen, onClose, cart, onU
                                                     <option key={table} value={table}>Table {table}</option>
                                                 ))}
                                             </select>
+                                            {/* Floor Plan Button */}
+                                            {settings.floorPlanEnabled && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setShowFloorPlan(true)}
+                                                    style={{
+                                                        width: '100%',
+                                                        padding: '8px',
+                                                        marginTop: '8px',
+                                                        backgroundColor: '#eff6ff',
+                                                        color: '#2563eb',
+                                                        border: '1px solid #2563eb',
+                                                        borderRadius: '6px',
+                                                        fontSize: '13px',
+                                                        fontWeight: '500',
+                                                        cursor: 'pointer',
+                                                    }}
+                                                >
+                                                    📍 View Floor Plan
+                                                </button>
+                                            )}
                                         </div>
                                         <div style={{flex: 1}}>
                                             <label style={styles.adminLabel}>Number of Guests</label>
@@ -310,14 +367,32 @@ export const CartModal: React.FC<CartModalProps> = ({ isOpen, onClose, cart, onU
                                 </div>
                             )}
 
-                            <div style={{marginTop: '20px'}}>
-                                <TimeSlotPicker
-                                    settings={settings}
-                                    orders={orders}
-                                    selectedTime={selectedTime}
-                                    onSelectTime={setSelectedTime}
-                                />
-                            </div>
+                            {/* Time Slot Picker - Only show for takeaway orders */}
+                            {orderType === 'takeaway' && (
+                                <div style={{marginTop: '20px'}}>
+                                    <TimeSlotPicker
+                                        settings={settings}
+                                        orders={orders}
+                                        selectedTime={selectedTime}
+                                        onSelectTime={setSelectedTime}
+                                    />
+                                </div>
+                            )}
+
+                            {/* Dine-in info message */}
+                            {orderType === 'dine-in' && (
+                                <div style={{
+                                    marginTop: '20px',
+                                    padding: '12px',
+                                    backgroundColor: '#eff6ff',
+                                    borderRadius: '8px',
+                                    border: '1px solid #bfdbfe',
+                                }}>
+                                    <p style={{margin: 0, fontSize: '14px', color: '#1e40af'}}>
+                                        ℹ️ Your order will be prepared immediately for dine-in service.
+                                    </p>
+                                </div>
+                            )}
                         </>
                     )}
                 </div>
@@ -332,6 +407,60 @@ export const CartModal: React.FC<CartModalProps> = ({ isOpen, onClose, cart, onU
                     </button>
                 </footer>
             </div>
+
+            {/* Floor Plan Modal */}
+            {showFloorPlan && settings.floorPlanEnabled && (
+                <div style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 10000,
+                }} onClick={() => setShowFloorPlan(false)}>
+                    <div style={{
+                        backgroundColor: 'white',
+                        borderRadius: '12px',
+                        maxWidth: '90vw',
+                        maxHeight: '90vh',
+                        overflow: 'auto',
+                        position: 'relative',
+                    }} onClick={(e) => e.stopPropagation()}>
+                        <button
+                            onClick={() => setShowFloorPlan(false)}
+                            style={{
+                                position: 'absolute',
+                                top: '16px',
+                                right: '16px',
+                                width: '32px',
+                                height: '32px',
+                                borderRadius: '50%',
+                                border: 'none',
+                                backgroundColor: '#f3f4f6',
+                                color: '#374151',
+                                fontSize: '20px',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                zIndex: 1,
+                            }}
+                            aria-label="Close"
+                        >
+                            ✕
+                        </button>
+                        <FloorPlanDisplay
+                            onTableSelect={handleTableSelectFromFloorPlan}
+                            settings={settings}
+                            showAllStatuses={false}
+                        />
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

@@ -1,0 +1,1398 @@
+# Task Breakdown: Customer Flow Redesign
+
+**Feature:** Customer Flow Redesign with Landing Pages, QR Codes, and Reservations
+**Phase:** Phase 3
+**Effort:** XL (3-4 weeks)
+**Status:** Ready for Implementation
+
+---
+
+## Overview
+
+**Total Task Groups:** 8 (organized by 6 implementation milestones + 2 additional phases)
+**Estimated Timeline:** 3-4 weeks
+**Developer Allocation:** Full-stack engineer(s) with React, TypeScript, Firebase experience
+
+---
+
+## Task List
+
+### Phase 0: Foundation & Setup
+
+#### Task Group 0: Project Setup and Library Installation
+**Dependencies:** None
+**Effort:** 0.5 day
+**Specialist:** Full-stack Engineer
+
+- [x] 0.0 Install required libraries and update dependencies
+  - [x] 0.1 Install QR code library
+    - Run: `npm install qrcode.react @types/qrcode.react`
+    - Verify installation in package.json
+  - [x] 0.2 Install date picker library
+    - Run: `npm install react-datepicker @types/react-datepicker`
+    - Import styles in main CSS/index file
+  - [x] 0.3 Install phone validation library
+    - Run: `npm install libphonenumber-js`
+    - Test import in TypeScript file to verify types
+  - [x] 0.4 Install ZIP utility (optional for bulk QR download)
+    - Run: `npm install jszip @types/jszip`
+    - Mark as optional dependency
+  - [x] 0.5 Verify all libraries compile successfully
+    - Run: `npm run build` or `tsc --noEmit`
+    - Fix any TypeScript compilation errors
+    - Commit package.json and package-lock.json
+
+**Acceptance Criteria:**
+- All 4 libraries installed and listed in package.json
+- No TypeScript compilation errors
+- Build succeeds without warnings
+- Dependencies committed to version control
+
+---
+
+### Milestone 1: Landing Page & Branding
+
+#### Task Group 1: Data Models and Settings Infrastructure
+**Dependencies:** Task Group 0
+**Effort:** 1 day
+**Specialist:** Backend Engineer
+
+- [x] 1.0 Update TypeScript interfaces for landing page support
+  - [x] 1.1 Write 2-6 focused tests for settings updates
+    - Test: Update landingPage settings successfully
+    - Test: Image URL validation
+    - Test: Color hex format validation
+    - Test: Fetch settings with missing landingPage field (backward compatibility)
+  - [x] 1.2 Update `AppSettings` interface in `/Users/clivestruver/Projects/restaurant-management-system/types.ts`
+    - Add `landingPage` optional field with structure:
+      ```typescript
+      landingPage?: {
+        logoUrl?: string;
+        heroImageUrl?: string;
+        primaryColor?: string; // Hex color
+        tagline?: string; // Max 200 chars
+        address?: string;
+        phone?: string;
+        email?: string;
+      };
+      ```
+    - Add `tableOccupation` optional field (foundation for Phase 4):
+      ```typescript
+      tableOccupation?: {
+        servicePeriods: {
+          breakfast: number; // minutes (default: 45)
+          lunch: number; // minutes (default: 60)
+          dinner: number; // minutes (default: 90)
+        };
+        partySizeModifiers: {
+          solo: number; // minutes offset (default: -15)
+          couple: number; // minutes offset (default: 0)
+          smallGroup: number; // minutes offset (default: +15)
+          largeGroup: number; // minutes offset (default: +30)
+        };
+      };
+      ```
+  - [x] 1.3 Create Firebase Storage functions in `/Users/clivestruver/Projects/restaurant-management-system/firebase/api-multitenant.ts`
+    - Function: `uploadBrandingImage(tenantId: string, file: File, type: 'logo' | 'hero'): Promise<string>`
+    - Storage path: `tenants/{tenantId}/branding/{type}.{extension}`
+    - Return download URL
+    - Add error handling for upload failures
+  - [x] 1.4 Create settings update function
+    - Function: `updateLandingPageSettings(tenantId: string, settings: AppSettings['landingPage']): Promise<void>`
+    - Update Firestore document: `tenants/{tenantId}/settings/appSettings`
+    - Use merge option to preserve existing fields
+  - [x] 1.5 Update Firestore Security Rules in `/Users/clivestruver/Projects/restaurant-management-system/firestore.rules`
+    - Allow public read for settings (landing page must be publicly accessible)
+    - Allow admin write for landingPage field
+    - Rule: `allow read: if true;` for settings document
+  - [x] 1.6 Update Firebase Storage Rules in `/Users/clivestruver/Projects/restaurant-management-system/storage.rules`
+    - Add branding images path: `tenants/{tenantId}/branding/{imageFile}`
+    - Allow public read: `allow read: if true;`
+    - Allow admin write with size limit (5MB) and image type validation
+  - [ ] 1.7 Run settings infrastructure tests
+    - Run ONLY the 2-6 tests from 1.1
+    - Verify image upload works
+    - Verify settings update works
+    - Do NOT run entire test suite
+
+**Acceptance Criteria:**
+- Tests from 1.1 pass (2-6 tests)
+- AppSettings interface updated with new fields
+- Firebase functions created and work correctly
+- Security rules deployed and tested
+- Image upload succeeds and returns URL
+
+---
+
+#### Task Group 2: Landing Page Admin UI
+**Dependencies:** Task Group 1
+**Effort:** 2 days
+**Specialist:** Frontend Engineer
+
+- [ ] 2.0 Create admin UI for landing page configuration
+  - [ ] 2.1 Write 2-6 focused tests for admin landing page settings
+    - Test: Render LandingPageSettings component
+    - Test: Upload logo image successfully
+    - Test: Color picker updates primaryColor
+    - Test: Save settings and show success toast
+  - [ ] 2.2 Create `LandingPageSettings.tsx` component in `/Users/clivestruver/Projects/restaurant-management-system/components/admin/`
+    - Reuse form patterns from SettingsManager.tsx
+    - Create form layout with sections:
+      - Branding (logo, hero image, primary color)
+      - Content (tagline, address, phone, email)
+      - Preview
+  - [ ] 2.3 Implement image upload UI
+    - Reuse ImagePicker component pattern
+    - Two upload sections: Logo and Hero Image
+    - Show current images if already uploaded
+    - Preview uploaded images before save
+  - [ ] 2.4 Add color picker input
+    - Use HTML5 `<input type="color">` for primary color
+    - Show hex value alongside picker
+    - Default to existing primaryColor or "#3498db"
+  - [ ] 2.5 Add text input fields
+    - Tagline: text input, max 200 characters, character counter
+    - Address: textarea, optional
+    - Phone: tel input, optional
+    - Email: email input, optional, HTML5 validation
+  - [ ] 2.6 Implement preview functionality
+    - "Preview" button opens modal
+    - Modal shows LandingPage component with current settings
+    - Real-time updates as settings change
+  - [ ] 2.7 Implement save functionality
+    - "Save Settings" button
+    - Upload images to Storage first (if new images selected)
+    - Update Firestore settings with image URLs
+    - Show loading state during save
+    - Show success toast on completion
+    - Handle errors gracefully
+  - [ ] 2.8 Add LandingPageSettings to AdminPanel navigation
+    - Update `/Users/clivestruver/Projects/restaurant-management-system/components/admin/AdminPanel.tsx`
+    - Add new tab/section: "Landing Page"
+    - Render LandingPageSettings component when selected
+  - [ ] 2.9 Run admin UI tests
+    - Run ONLY the 2-6 tests from 2.1
+    - Verify settings save correctly
+    - Test image upload workflow
+    - Do NOT run entire test suite
+
+**Acceptance Criteria:**
+- Tests from 2.1 pass (2-6 tests)
+- LandingPageSettings component renders correctly
+- Images upload successfully to Storage
+- Settings save to Firestore
+- Preview shows accurate rendering
+- Component accessible from AdminPanel
+
+---
+
+#### Task Group 3: Landing Page Customer UI
+**Dependencies:** Task Group 2
+**Effort:** 2 days
+**Specialist:** Frontend Engineer
+
+- [ ] 3.0 Create customer-facing landing page
+  - [ ] 3.1 Write 2-6 focused tests for LandingPage component
+    - Test: Render LandingPage with default settings
+    - Test: Display custom logo and hero image
+    - Test: "Continue to Order" button navigation
+    - Test: Mobile responsive layout
+  - [ ] 3.2 Create `LandingPage.tsx` component in `/Users/clivestruver/Projects/restaurant-management-system/components/`
+    - Props: `onContinue: () => void`
+    - Fetch AppSettings from TenantContext or Firestore
+    - Handle missing landingPage field (defaults)
+  - [ ] 3.3 Implement hero section layout
+    - Full-screen container (100vh on mobile, auto on desktop)
+    - Background: heroImageUrl with overlay or solid color
+    - Logo: centered, max height 80px mobile / 120px desktop
+    - Business name: from tenant metadata
+    - Tagline: display if configured, 24px mobile / 36px desktop font
+  - [ ] 3.4 Implement info section layout
+    - Grid layout: 1 column mobile, 3 columns desktop
+    - Info cards for:
+      - Operating Hours (fetch from AppSettings.weekSchedule, format as "Mon-Fri: 8am-5pm")
+      - Location (display address)
+      - Contact (display phone and email)
+    - Each card: icon + label + value
+  - [ ] 3.5 Implement CTA button
+    - Large button: "Continue to Order"
+    - Primary color from settings or default "#3498db"
+    - Center-aligned, min height 60px
+    - onClick calls onContinue prop
+  - [ ] 3.6 Apply mobile-first responsive styling
+    - Breakpoints: 320px (mobile), 768px (tablet), 1024px (desktop)
+    - Hero image: object-fit cover, lazy loading
+    - Touch-friendly button sizes (min 44x44px)
+    - Generous padding: 20px mobile, 40px desktop
+    - Test on iPhone, Android, iPad viewports
+  - [ ] 3.7 Handle loading and error states
+    - Show skeleton loader while fetching settings
+    - Show default values if settings missing
+    - Handle missing images gracefully (show placeholder or hide)
+  - [ ] 3.8 Run LandingPage component tests
+    - Run ONLY the 2-6 tests from 3.1
+    - Verify responsive layout works
+    - Test navigation flow
+    - Do NOT run entire test suite
+
+**Acceptance Criteria:**
+- Tests from 3.1 pass (2-6 tests)
+- LandingPage renders with custom branding
+- Mobile-responsive (tested on 3+ devices)
+- Loads in <2 seconds
+- CTA button navigates correctly
+- Graceful handling of missing data
+
+---
+
+### Milestone 2: Order Intent & Type Selection
+
+#### Task Group 4: Customer Journey State Management
+**Dependencies:** Task Group 3
+**Effort:** 1 day
+**Specialist:** Frontend Engineer
+
+- [ ] 4.0 Create customer journey context and state management
+  - [ ] 4.1 Write 2-6 focused tests for CustomerJourneyContext
+    - Test: Initialize context with default state
+    - Test: setIntent updates customerIntent
+    - Test: setOrderType updates orderType
+    - Test: setTableNumber updates all relevant fields (entryPoint, intent, orderType, tableNumber)
+    - Test: resetJourney clears all state
+  - [ ] 4.2 Create `CustomerJourneyContext.tsx` in `/Users/clivestruver/Projects/restaurant-management-system/contexts/`
+    - Interface:
+      ```typescript
+      interface CustomerJourneyState {
+        entryPoint: 'landing' | 'qr-code' | 'direct';
+        customerIntent: 'now' | 'later' | null;
+        orderType: 'dine-in' | 'takeaway' | null;
+        tableNumber?: number;
+      }
+
+      interface CustomerJourneyContextType {
+        journey: CustomerJourneyState;
+        setIntent: (intent: 'now' | 'later') => void;
+        setOrderType: (type: 'dine-in' | 'takeaway') => void;
+        setTableNumber: (number: number) => void;
+        resetJourney: () => void;
+      }
+      ```
+    - Default state: entryPoint='landing', customerIntent=null, orderType=null
+  - [ ] 4.3 Implement context methods
+    - setIntent: update customerIntent
+    - setOrderType: update orderType
+    - setTableNumber: set entryPoint='qr-code', customerIntent='now', orderType='dine-in', tableNumber
+    - resetJourney: reset to default state
+  - [ ] 4.4 Create CustomerJourneyProvider component
+    - Wraps children with context provider
+    - Manages state with useState
+    - Exports useCustomerJourney hook
+  - [ ] 4.5 Add CustomerJourneyProvider to App component hierarchy
+    - Update `/Users/clivestruver/Projects/restaurant-management-system/App.tsx`
+    - Wrap customer-facing routes with CustomerJourneyProvider
+    - Place inside TenantProvider and AuthProvider
+  - [ ] 4.6 Run CustomerJourneyContext tests
+    - Run ONLY the 2-6 tests from 4.1
+    - Verify state updates correctly
+    - Test all methods work as expected
+    - Do NOT run entire test suite
+
+**Acceptance Criteria:**
+- Tests from 4.1 pass (2-6 tests)
+- CustomerJourneyContext created and exported
+- useCustomerJourney hook works correctly
+- Provider added to App component tree
+- State updates trigger re-renders
+
+---
+
+#### Task Group 5: Intent and Order Type Selection UI
+**Dependencies:** Task Group 4
+**Effort:** 1.5 days
+**Specialist:** Frontend Engineer
+
+- [ ] 5.0 Create intent and order type selection screens
+  - [ ] 5.1 Write 2-6 focused tests for selection components
+    - Test: IntentSelection renders two buttons
+    - Test: Clicking "Here Now" calls onSelectIntent('now')
+    - Test: OrderTypeSelection renders two buttons
+    - Test: Clicking "Eat In" calls onSelectType('dine-in')
+  - [ ] 5.2 Create `IntentSelection.tsx` component in `/Users/clivestruver/Projects/restaurant-management-system/components/`
+    - Props: `onSelectIntent: (intent: 'now' | 'later') => void`
+    - Layout: centered container, max-width 600px
+    - Heading: "How can we serve you today?"
+    - Two large buttons (min 120px height):
+      - "I'm Here Now" - green (#2ecc71), clock icon
+      - "Book for Later" - blue (#3498db), calendar icon
+    - Buttons: stacked on mobile, side-by-side on desktop
+    - Sub-text: "Order for pickup or dine-in" / "Reserve a table"
+  - [ ] 5.3 Create `OrderTypeSelection.tsx` component in `/Users/clivestruver/Projects/restaurant-management-system/components/`
+    - Props: `onSelectType: (type: 'dine-in' | 'takeaway') => void`
+    - Similar layout to IntentSelection
+    - Heading: "Will you be dining with us or taking away?"
+    - Two buttons:
+      - "Eat In" - plate/utensils icon
+      - "Take Away" - box/bag icon
+    - Same responsive layout pattern
+  - [ ] 5.4 Apply consistent styling
+    - Buttons: rounded corners, icon + text layout
+    - Hover: scale transform (1.05x)
+    - Active state: slight press effect
+    - Icons: emoji or SVG (🕐 📅 🍽️ 📦)
+    - Font sizes: 20px mobile, 24px desktop
+  - [ ] 5.5 Mobile-responsive design
+    - Breakpoints: 320px, 768px, 1024px
+    - Touch targets: min 44x44px
+    - Spacing: generous padding between buttons
+    - Test on multiple screen sizes
+  - [ ] 5.6 Run selection component tests
+    - Run ONLY the 2-6 tests from 5.1
+    - Verify buttons trigger correct callbacks
+    - Test responsive layout
+    - Do NOT run entire test suite
+
+**Acceptance Criteria:**
+- Tests from 5.1 pass (2-6 tests)
+- Both components render correctly
+- Buttons have clear visual hierarchy
+- Mobile-responsive (tested on 3+ devices)
+- Callbacks fire correctly on click
+- Matches design mockup/spec
+
+---
+
+#### Task Group 6: Navigation Flow Integration
+**Dependencies:** Task Group 5
+**Effort:** 1 day
+**Specialist:** Full-stack Engineer
+
+- [ ] 6.0 Integrate customer journey flow into App routing
+  - [ ] 6.1 Write 2-6 focused tests for navigation flow
+    - Test: Landing page shows on initial load
+    - Test: After "Continue", IntentSelection shows
+    - Test: After selecting "now", OrderTypeSelection shows
+    - Test: After selecting order type, menu shows
+    - Test: QR code entry (table param) skips to menu
+  - [ ] 6.2 Update App.tsx routing logic
+    - Parse URL query params: `const params = new URLSearchParams(window.location.search)`
+    - Check for table parameter: `const tableNumber = params.get('table')`
+    - If tableNumber exists, call `setTableNumber(parseInt(tableNumber))`
+  - [ ] 6.3 Implement conditional rendering based on journey state
+    - Use useCustomerJourney hook to get current state
+    - Rendering logic:
+      ```typescript
+      // QR code entry: skip to menu
+      if (journey.entryPoint === 'qr-code') return <CustomerApp />;
+
+      // No intent: show landing page
+      if (!journey.customerIntent) return <LandingPage onContinue={() => setIntent('now')} />;
+
+      // Intent is "later": show reservation flow (Milestone 4)
+      if (journey.customerIntent === 'later') return <ReservationFlow />;
+
+      // Intent is "now" but no order type: show order type selection
+      if (!journey.orderType) return <OrderTypeSelection onSelectType={setOrderType} />;
+
+      // Order type selected: show menu
+      return <CustomerApp />;
+      ```
+  - [ ] 6.4 Implement navigation between screens
+    - LandingPage "Continue" → IntentSelection
+    - IntentSelection "Here Now" → OrderTypeSelection
+    - IntentSelection "Book Later" → ReservationFlow (placeholder for now)
+    - OrderTypeSelection → CustomerApp (menu)
+  - [ ] 6.5 Handle browser back button
+    - Use browser history API or React Router (if applicable)
+    - Allow users to go back to previous screen
+    - Maintain journey state across navigation
+  - [ ] 6.6 Add table number badge to menu (if QR code entry)
+    - Update MenuScreen or CustomerApp to show "Table X" badge
+    - Display in header or prominent location
+    - Only show if journey.tableNumber is set
+  - [ ] 6.7 Run navigation flow tests
+    - Run ONLY the 2-6 tests from 6.1
+    - Test full flow: landing → intent → type → menu
+    - Test QR code skip logic
+    - Do NOT run entire test suite
+
+**Acceptance Criteria:**
+- Tests from 6.1 pass (2-6 tests)
+- Navigation flow works end-to-end
+- QR code entry skips correctly to menu
+- Table number badge displays on menu
+- Back button navigation works
+- No broken routes or dead ends
+
+---
+
+### Milestone 3: QR Code System
+
+#### Task Group 7: QR Code Generation and Admin UI
+**Dependencies:** Task Group 6
+**Effort:** 1.5 days
+**Specialist:** Frontend Engineer
+
+- [ ] 7.0 Create QR code generation and management system
+  - [ ] 7.1 Write 2-6 focused tests for QR code functionality
+    - Test: Generate QR code URL with correct table number
+    - Test: QR code renders with correct data
+    - Test: Download QR code as PNG
+    - Test: Bulk download creates ZIP file (if jszip installed)
+  - [ ] 7.2 Create `QRCodeManager.tsx` component in `/Users/clivestruver/Projects/restaurant-management-system/components/admin/`
+    - Fetch availableTables from AppSettings
+    - Display list of tables with QR preview and download button
+    - Grid layout: 2-3 columns on desktop, 1 column on mobile
+  - [ ] 7.3 Implement QR code generation logic
+    - Function: `generateQRCodeURL(tenantId: string, tableNumber: number): string`
+    - URL format: `https://{subdomain}.orderflow.app/order?table={tableNumber}`
+    - Use subdomain from TenantContext
+    - For local dev: `http://localhost:5173/order?table={tableNumber}` or similar
+  - [ ] 7.4 Render QR codes with qrcode.react library
+    - Import QRCode component from 'qrcode.react'
+    - Render for each table:
+      ```tsx
+      <QRCode
+        id={`qr-${tableNumber}`}
+        value={generateQRCodeURL(tenantId, tableNumber)}
+        size={256}
+        level="H" // High error correction
+        includeMargin={true}
+      />
+      ```
+    - Add table number label below each QR code
+  - [ ] 7.5 Implement individual QR download
+    - "Download" button per QR code
+    - Function: `downloadQRCode(tableNumber: number)`
+    - Convert canvas to data URL
+    - Create download link and trigger click
+    - Filename: `table-{tableNumber}-qr.png`
+  - [ ] 7.6 Implement bulk download (optional, if jszip available)
+    - "Download All as ZIP" button
+    - Loop through all tables, extract canvas data
+    - Use JSZip to create archive
+    - Download as `qr-codes.zip`
+  - [ ] 7.7 Add QRCodeManager to AdminPanel
+    - Update AdminPanel.tsx navigation
+    - Add new section: "QR Codes"
+    - Render QRCodeManager when selected
+  - [ ] 7.8 Run QR code tests
+    - Run ONLY the 2-6 tests from 7.1
+    - Verify QR codes generate correctly
+    - Test download functionality
+    - Do NOT run entire test suite
+
+**Acceptance Criteria:**
+- Tests from 7.1 pass (2-6 tests)
+- QR codes render for all tables
+- Individual download works (PNG file)
+- Bulk download works (ZIP file, if implemented)
+- QR codes encode correct URL format
+- Component accessible from AdminPanel
+
+---
+
+### Milestone 4: Reservation System
+
+#### Task Group 8: Reservation Data Layer
+**Dependencies:** Task Group 6
+**Effort:** 1.5 days
+**Specialist:** Backend Engineer
+
+- [ ] 8.0 Create reservation data models and API functions
+  - [ ] 8.1 Write 2-6 focused tests for reservation CRUD operations
+    - Test: Create reservation successfully
+    - Test: Fetch reservations for specific date
+    - Test: Update reservation status
+    - Test: Stream reservations with filters
+  - [ ] 8.2 Add Reservation interface to `/Users/clivestruver/Projects/restaurant-management-system/types.ts`
+    - Interface:
+      ```typescript
+      export interface Reservation {
+        id: string; // Firestore document ID
+        tenantId: string;
+
+        // Booking details
+        date: string; // YYYY-MM-DD format
+        time: string; // HH:mm 24-hour format
+        partySize: number;
+
+        // Contact information
+        contactName: string;
+        contactPhone: string; // E.164 format
+        contactEmail: string;
+
+        // Optional preferences
+        tablePreference?: number;
+        specialRequests?: string; // Max 500 chars
+
+        // Status tracking
+        status: 'pending' | 'confirmed' | 'seated' | 'completed' | 'cancelled' | 'no-show';
+
+        // Timestamps
+        createdAt: any; // Firestore Timestamp
+        updatedAt: any; // Firestore Timestamp
+
+        // Admin notes
+        adminNotes?: string;
+      }
+      ```
+  - [ ] 8.3 Create reservation API functions in `/Users/clivestruver/Projects/restaurant-management-system/firebase/api-multitenant.ts`
+    - Function: `createReservation(tenantId, reservationData)`
+      - Add to Firestore: `tenants/{tenantId}/reservations/{auto-id}`
+      - Set createdAt and updatedAt with serverTimestamp()
+      - Return reservation ID
+    - Function: `updateReservationStatus(tenantId, reservationId, status, adminNotes?)`
+      - Update status and updatedAt
+      - Optionally update adminNotes
+    - Function: `streamReservations(tenantId, filters, callback)`
+      - Real-time listener with onSnapshot
+      - Filters: date, status
+      - Order by date desc, time asc
+      - Return unsubscribe function
+    - Function: `deleteReservation(tenantId, reservationId)`
+      - Delete from Firestore (admin only)
+  - [ ] 8.4 Update Firestore Security Rules
+    - Add reservation rules:
+      ```javascript
+      match /tenants/{tenantId}/reservations/{reservationId} {
+        // Anyone can create (guest checkout)
+        allow create: if request.resource.data.tenantId == tenantId
+                      && request.resource.data.status == 'pending'
+                      && validateReservationData(request.resource.data);
+
+        // Admin/staff can read
+        allow read: if isAdminOrStaff(tenantId);
+
+        // Admin/staff can update
+        allow update: if isAdminOrStaff(tenantId)
+                      && request.resource.data.tenantId == resource.data.tenantId;
+
+        // Admin can delete
+        allow delete: if isAdmin(tenantId);
+      }
+
+      function validateReservationData(data) {
+        return data.date is string
+            && data.time is string
+            && data.partySize is int
+            && data.partySize >= 1
+            && data.partySize <= 20
+            && data.contactName is string
+            && data.contactPhone is string
+            && data.contactEmail is string;
+      }
+      ```
+  - [ ] 8.5 Create Firestore composite indexes
+    - Index for filtering reservations:
+      - Collection: `reservations`
+      - Fields: `tenantId` (Ascending), `date` (Ascending), `status` (Ascending)
+    - Create via Firebase Console or `firestore.indexes.json`
+  - [ ] 8.6 Run reservation data layer tests
+    - Run ONLY the 2-6 tests from 8.1
+    - Verify CRUD operations work
+    - Test real-time streaming
+    - Do NOT run entire test suite
+
+**Acceptance Criteria:**
+- Tests from 8.1 pass (2-6 tests)
+- Reservation interface added to types.ts
+- All API functions work correctly
+- Security rules deployed and tested
+- Composite indexes created
+- Real-time updates work
+
+---
+
+#### Task Group 9: Reservation Form UI
+**Dependencies:** Task Group 8
+**Effort:** 2 days
+**Specialist:** Frontend Engineer
+
+- [ ] 9.0 Create reservation form and validation
+  - [ ] 9.1 Write 2-6 focused tests for ReservationForm
+    - Test: Render form with all fields
+    - Test: Validation error for past date
+    - Test: Validation error for invalid phone
+    - Test: Submit valid reservation successfully
+  - [ ] 9.2 Create `ReservationForm.tsx` component in `/Users/clivestruver/Projects/restaurant-management-system/components/`
+    - Props:
+      ```typescript
+      interface ReservationFormProps {
+        onSubmit: (reservation: Omit<Reservation, 'id' | 'createdAt' | 'updatedAt' | 'tenantId' | 'status'>) => Promise<void>;
+        onCancel: () => void;
+        availableTables: number[];
+      }
+      ```
+    - Form state management with useState for all fields
+  - [ ] 9.3 Implement date picker field (required)
+    - Use react-datepicker library
+    - Min date: today
+    - Max date: today + 30 days (or from settings)
+    - Disable dates outside operating hours (check AppSettings.weekSchedule)
+    - Label: "Reservation Date"
+  - [ ] 9.4 Implement time picker field (required)
+    - Dropdown with 15-minute intervals
+    - Generate based on service period settings
+    - Filter to only show times within operating hours
+    - Label: "Reservation Time"
+  - [ ] 9.5 Implement party size field (required)
+    - Number input
+    - Min: 1, Max: 20
+    - Label: "Number of Guests"
+  - [ ] 9.6 Implement contact fields (required)
+    - Contact Name: text input, max 100 chars
+    - Phone Number: tel input with libphonenumber-js validation
+      - Format to E.164 on submit
+      - Show format hint: "e.g., +1234567890"
+    - Email: email input with HTML5 validation
+  - [ ] 9.7 Implement optional fields
+    - Table Preference: dropdown of availableTables + "No Preference" option
+    - Special Requests: textarea, max 500 chars, character counter
+  - [ ] 9.8 Implement form validation
+    - Validation rules:
+      ```typescript
+      const validationRules = {
+        date: (value: string) => {
+          const date = new Date(value);
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          return date >= today ? null : 'Date must be today or in the future';
+        },
+        time: (value: string) => value ? null : 'Time is required',
+        partySize: (value: number) => {
+          if (value < 1) return 'Party size must be at least 1';
+          if (value > 20) return 'Party size cannot exceed 20';
+          return null;
+        },
+        contactName: (value: string) => value.trim() ? null : 'Name is required',
+        contactPhone: (value: string) => {
+          // Use libphonenumber-js for validation
+          const phoneRegex = /^\+?[1-9]\d{1,14}$/;
+          return phoneRegex.test(value) ? null : 'Invalid phone number';
+        },
+        contactEmail: (value: string) => {
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+          return emailRegex.test(value) ? null : 'Invalid email address';
+        },
+      };
+      ```
+    - Show validation errors inline below each field
+    - Prevent submit if validation fails
+  - [ ] 9.9 Implement submit handler
+    - Validate all fields
+    - Show loading state during submission
+    - Call onSubmit prop with formatted data
+    - Handle errors with toast notification
+    - On success, parent handles navigation to confirmation
+  - [ ] 9.10 Apply form styling
+    - Reuse form patterns from SettingsManager
+    - Mobile-responsive layout
+    - Clear field labels and validation messages
+    - Submit button: "Reserve Table" (primary action)
+    - Cancel button: "Cancel" (secondary action)
+  - [ ] 9.11 Run ReservationForm tests
+    - Run ONLY the 2-6 tests from 9.1
+    - Verify validation works
+    - Test submit flow
+    - Do NOT run entire test suite
+
+**Acceptance Criteria:**
+- Tests from 9.1 pass (2-6 tests)
+- All form fields render correctly
+- Validation prevents invalid submissions
+- Phone and email validation works
+- Date picker respects min/max dates
+- Form submits successfully with valid data
+- Mobile-responsive design
+
+---
+
+#### Task Group 10: Reservation Confirmation and Admin Management
+**Dependencies:** Task Group 9
+**Effort:** 2 days
+**Specialist:** Full-stack Engineer
+
+- [ ] 10.0 Create reservation confirmation and admin management
+  - [ ] 10.1 Write 2-6 focused tests for reservation components
+    - Test: ReservationConfirmation displays booking details
+    - Test: ReservationManager fetches and displays reservations
+    - Test: Update reservation status from manager
+    - Test: Filter reservations by date and status
+  - [ ] 10.2 Create `ReservationConfirmation.tsx` component in `/Users/clivestruver/Projects/restaurant-management-system/components/`
+    - Props: `reservation: Reservation`
+    - Display confirmation message: "Reservation Confirmed!"
+    - Show booking details:
+      - Date: formatted as "October 27, 2025"
+      - Time: formatted as "7:00 PM"
+      - Party size: "Party of 4"
+      - Table preference (if selected)
+      - Contact name and phone
+    - "Back to Home" button (resets journey)
+    - Optional: "Add to Calendar" link (future enhancement)
+  - [ ] 10.3 Create `ReservationManager.tsx` component in `/Users/clivestruver/Projects/restaurant-management-system/components/admin/`
+    - Use streamReservations for real-time updates
+    - Display reservations in table format:
+      - Columns: Date, Time, Party Size, Contact Name, Phone, Status, Actions
+      - Sortable by date
+      - Color-coded status badges:
+        - Pending: Yellow (#ffc107)
+        - Confirmed: Green (#28a745)
+        - Seated: Blue (#007bff)
+        - Completed: Gray (#6c757d)
+        - Cancelled: Red (#dc3545)
+        - No-show: Dark Red (#bd2130)
+  - [ ] 10.4 Implement reservation filters
+    - Date picker: filter by specific date
+    - Status dropdown: filter by status (all, pending, confirmed, etc.)
+    - Apply filters to streamReservations query
+    - Show count: "Showing X reservations"
+  - [ ] 10.5 Implement reservation actions
+    - Actions per row:
+      - "View Details" - open modal with full details
+      - "Confirm" - update status to confirmed
+      - "Cancel" - update status to cancelled
+      - "Mark Seated" - update status to seated
+      - "Mark Completed" - update status to completed
+    - Only show relevant actions based on current status
+    - Confirm destructive actions (cancel, no-show)
+  - [ ] 10.6 Create reservation details modal
+    - Show all fields: date, time, party size, contact info, special requests
+    - Editable admin notes field
+    - Save notes button
+    - Close button
+  - [ ] 10.7 Add ReservationManager to AdminPanel
+    - Update AdminPanel.tsx navigation
+    - Add new section: "Reservations"
+    - Render ReservationManager when selected
+  - [ ] 10.8 Integrate ReservationConfirmation into customer flow
+    - After successful reservation submission, show confirmation
+    - Route: `/reservation/confirmed` or render component
+    - Pass reservation data as state or fetch by ID
+  - [ ] 10.9 Run reservation UI tests
+    - Run ONLY the 2-6 tests from 10.1
+    - Verify real-time updates work
+    - Test status update actions
+    - Do NOT run entire test suite
+
+**Acceptance Criteria:**
+- Tests from 10.1 pass (2-6 tests)
+- ReservationConfirmation displays correctly
+- ReservationManager shows real-time reservations
+- Filters work correctly
+- Status updates work
+- Admin notes save successfully
+- Modal shows full details
+
+---
+
+#### Task Group 11: Auto-Cancellation Cloud Function
+**Dependencies:** Task Group 8
+**Effort:** 1 day
+**Specialist:** Backend Engineer
+
+- [ ] 11.0 Create auto-cancellation Cloud Function
+  - [ ] 11.1 Write 2-4 focused tests for auto-cancel logic
+    - Test: No-show reservation auto-cancelled after 15 minutes
+    - Test: Confirmed reservation remains confirmed within 15 minutes
+    - Test: Cloud Function runs without errors
+  - [ ] 11.2 Set up Firebase Functions (if not already set up)
+    - Navigate to `/Users/clivestruver/Projects/restaurant-management-system/functions/`
+    - If functions folder doesn't exist, run: `firebase init functions`
+    - Select TypeScript
+    - Install dependencies: `npm install`
+  - [ ] 11.3 Create scheduled function in `functions/src/index.ts` (or new file)
+    - Import Firebase Admin SDK
+    - Function code:
+      ```typescript
+      import { onSchedule } from 'firebase-functions/v2/scheduler';
+      import { getFirestore, Timestamp } from 'firebase-admin/firestore';
+
+      export const autoCancelNoShows = onSchedule(
+        {
+          schedule: 'every 5 minutes',
+          timeZone: 'UTC',
+        },
+        async (event) => {
+          const db = getFirestore();
+          const now = new Date();
+
+          // Query all confirmed reservations
+          const reservationsSnapshot = await db
+            .collectionGroup('reservations')
+            .where('status', '==', 'confirmed')
+            .get();
+
+          const updates: Promise<any>[] = [];
+
+          for (const doc of reservationsSnapshot.docs) {
+            const reservation = doc.data();
+
+            // Parse reservation datetime
+            const reservationDateTime = new Date(`${reservation.date}T${reservation.time}:00`);
+
+            // Calculate minutes past reservation time
+            const minutesPast = (now.getTime() - reservationDateTime.getTime()) / 60000;
+
+            // Auto-cancel if more than 15 minutes past
+            if (minutesPast > 15) {
+              console.log(`Auto-cancelling no-show reservation ${doc.id}`);
+              updates.push(
+                doc.ref.update({
+                  status: 'no-show',
+                  updatedAt: Timestamp.now(),
+                  adminNotes: `Auto-cancelled: ${minutesPast.toFixed(0)} minutes past reservation time`,
+                })
+              );
+            }
+          }
+
+          await Promise.all(updates);
+          console.log(`Processed ${reservationsSnapshot.size} reservations, cancelled ${updates.length}`);
+        }
+      );
+      ```
+  - [ ] 11.4 Deploy Cloud Function
+    - Run: `firebase deploy --only functions:autoCancelNoShows`
+    - Verify deployment succeeds
+    - Check Firebase Console for function status
+  - [ ] 11.5 Test Cloud Function
+    - Create test reservation with time in past (e.g., 30 minutes ago)
+    - Wait for next scheduled run (or manually trigger in Console)
+    - Verify status changes to 'no-show'
+    - Check adminNotes for auto-cancel message
+  - [ ] 11.6 Monitor function logs
+    - Check Cloud Functions logs in Firebase Console
+    - Verify function runs every 5 minutes
+    - Check for errors or unexpected behavior
+    - Set up alerts for function failures (optional)
+  - [ ] 11.7 Run auto-cancel tests
+    - Run ONLY the 2-4 tests from 11.1
+    - Verify cancellation logic works
+    - Do NOT run entire test suite
+
+**Acceptance Criteria:**
+- Tests from 11.1 pass (2-4 tests)
+- Cloud Function deployed successfully
+- Function runs on schedule (every 5 minutes)
+- No-show reservations auto-cancelled after 15 minutes
+- Logs show successful execution
+- No errors in function logs
+
+---
+
+### Milestone 5: Menu Differentiation by Order Type
+
+#### Task Group 12: Product Availability Configuration
+**Dependencies:** Task Group 6
+**Effort:** 1.5 days
+**Specialist:** Full-stack Engineer
+
+- [ ] 12.0 Add order type availability to products
+  - [ ] 12.1 Write 2-6 focused tests for product availability
+    - Test: Product with availableFor=['dine-in'] shows only for dine-in
+    - Test: Product with availableFor=['both'] shows for both types
+    - Test: Product without availableFor field shows for both (backward compatibility)
+    - Test: Update product availableFor field successfully
+  - [ ] 12.2 Update Product interface in `/Users/clivestruver/Projects/restaurant-management-system/types.ts`
+    - Add field:
+      ```typescript
+      export interface Product {
+        // ... existing fields
+        availableFor?: ('dine-in' | 'takeaway' | 'both')[];
+      }
+      ```
+  - [ ] 12.3 Update ProductManager admin component
+    - File: `/Users/clivestruver/Projects/restaurant-management-system/components/admin/ProductManager.tsx`
+    - Add "Available For" section in product form
+    - Two checkboxes:
+      - "Dine-In" - checked if availableFor includes 'dine-in' or 'both'
+      - "Takeaway" - checked if availableFor includes 'takeaway' or 'both'
+    - Logic:
+      - Both checked → save as ['both']
+      - Only Dine-In → save as ['dine-in']
+      - Only Takeaway → save as ['takeaway']
+      - Neither checked → default to ['both']
+  - [ ] 12.4 Update product save function
+    - When saving product, include availableFor field
+    - Default to ['both'] if not specified
+    - Update Firestore document
+  - [ ] 12.5 Update menu filtering logic
+    - File: Menu component (MenuScreen.tsx or similar)
+    - Get current order type from CustomerJourneyContext
+    - Filter products:
+      ```typescript
+      const filteredProducts = products.filter(product => {
+        // Backward compatibility: if no field, assume 'both'
+        const availability = product.availableFor || ['both'];
+
+        // If 'both' is in array, show for all order types
+        if (availability.includes('both')) return true;
+
+        // Otherwise, check if current order type is in array
+        return availability.includes(currentOrderType);
+      });
+      ```
+  - [ ] 12.6 Test backward compatibility
+    - Existing products without availableFor field should show for all types
+    - No data migration needed
+    - Code handles missing field gracefully
+  - [ ] 12.7 Update Firestore Security Rules (if needed)
+    - Ensure availableFor field is allowed in product write operations
+    - No special validation needed (optional field)
+  - [ ] 12.8 Run product availability tests
+    - Run ONLY the 2-6 tests from 12.1
+    - Verify filtering works correctly
+    - Test backward compatibility
+    - Do NOT run entire test suite
+
+**Acceptance Criteria:**
+- Tests from 12.1 pass (2-6 tests)
+- Product interface updated
+- Admin UI shows availability checkboxes
+- Products save with availableFor field
+- Menu filters correctly by order type
+- Backward compatibility maintained
+- Existing products work without migration
+
+---
+
+### Milestone 6: Guest Checkout & Authentication
+
+#### Task Group 13: Guest Checkout Flow
+**Dependencies:** Task Group 12
+**Effort:** 2 days
+**Specialist:** Full-stack Engineer
+
+- [ ] 13.0 Implement guest checkout without forced login
+  - [ ] 13.1 Write 2-6 focused tests for guest checkout
+    - Test: Guest can place order without account
+    - Test: Order saves with guest contact info
+    - Test: Anonymous auth user created for guest
+    - Test: Account creation prompt shows after order
+  - [ ] 13.2 Update Order interface in `/Users/clivestruver/Projects/restaurant-management-system/types.ts`
+    - Add guest fields:
+      ```typescript
+      export interface Order {
+        // ... existing fields
+
+        // Guest contact info (for non-authenticated users)
+        guestEmail?: string;
+        guestPhone?: string;
+        isGuestOrder?: boolean; // True if placed without account
+      }
+      ```
+  - [ ] 13.3 Update CartModal or checkout component
+    - File: `/Users/clivestruver/Projects/restaurant-management-system/components/CartModal.tsx` (or similar)
+    - Check authentication status: `const { user } = useAuth()`
+    - If user is null or anonymous:
+      - Show guest checkout fields:
+        - Name: text input (required)
+        - Phone: tel input (required)
+        - Email: email input (optional)
+      - Label: "Contact Information" or "Guest Checkout"
+    - If user is authenticated:
+      - Pre-fill name, phone, email from user profile
+      - Show "Logged in as [name]" message
+  - [ ] 13.4 Implement anonymous auth for guests
+    - Import Firebase Auth: `import { signInAnonymously } from 'firebase/auth'`
+    - Before placing order, check if user is authenticated
+    - If not authenticated:
+      - Call `signInAnonymously(auth)` to create anonymous user
+      - Use anonymous UID for order.userId
+    - Set order.isGuestOrder = true
+    - Save guest contact info to order
+  - [ ] 13.5 Update placeOrder function
+    - File: Order placement logic in CartModal or API
+    - Accept guest contact info as parameters
+    - Save to order document:
+      ```typescript
+      {
+        userId: anonymousUid,
+        isGuestOrder: true,
+        guestEmail: email,
+        guestPhone: phone,
+        customerName: name,
+        // ... other order fields
+      }
+      ```
+  - [ ] 13.6 Update Firestore Security Rules for guest orders
+    - Allow anonymous users to create orders:
+      ```javascript
+      match /tenants/{tenantId}/orders/{orderId} {
+        // Authenticated users (including anonymous) can create orders
+        allow create: if request.auth != null
+                      && request.resource.data.userId == request.auth.uid;
+
+        // ... existing read/update/delete rules
+      }
+      ```
+  - [ ] 13.7 Test guest checkout flow
+    - Log out (or use incognito window)
+    - Add items to cart
+    - Enter guest contact info
+    - Place order
+    - Verify order created with guest fields
+    - Verify anonymous auth user created
+  - [ ] 13.8 Run guest checkout tests
+    - Run ONLY the 2-6 tests from 13.1
+    - Verify guest flow works end-to-end
+    - Do NOT run entire test suite
+
+**Acceptance Criteria:**
+- Tests from 13.1 pass (2-6 tests)
+- Order interface updated with guest fields
+- Guest checkout fields render correctly
+- Anonymous auth creates user successfully
+- Orders save with guest contact info
+- No forced account creation
+- Security rules allow anonymous orders
+
+---
+
+#### Task Group 14: Account Creation and Upgrade Flow
+**Dependencies:** Task Group 13
+**Effort:** 2 days
+**Specialist:** Frontend Engineer
+
+- [ ] 14.0 Create optional account creation after guest checkout
+  - [ ] 14.1 Write 2-6 focused tests for account upgrade
+    - Test: Account creation prompt shows after guest order
+    - Test: Guest can skip account creation
+    - Test: Create account links guest orders to new account
+    - Test: User logged in after account creation
+  - [ ] 14.2 Create post-order account creation prompt
+    - Show on order confirmation screen for guests
+    - Message: "Want to track your order and earn rewards? Create a free account!"
+    - Highlight benefits:
+      - Order history
+      - Loyalty points
+      - Faster checkout next time
+      - Reservation management
+    - Two buttons:
+      - "Create Account" (primary action)
+      - "No Thanks" or "Skip" (secondary, dismissible)
+  - [ ] 14.3 Create account creation modal/screen
+    - Pre-fill email from guest order
+    - Ask for password (required)
+    - Optional: Display name (or use name from order)
+    - "Create Account" button
+    - Terms of service agreement checkbox (if applicable)
+  - [ ] 14.4 Implement account upgrade logic
+    - When user creates account:
+      1. Create permanent Firebase Auth user with email/password
+      2. Link anonymous user to permanent account (if possible)
+         - Use Firebase `linkWithCredential()` method
+         - Handle errors if linking fails (e.g., email already exists)
+      3. Update user document in Firestore
+      4. Transfer guest orders to new user account:
+         - Query orders where userId = anonymous UID
+         - Update userId to new permanent UID
+         - Set isGuestOrder = false (optional)
+      5. Sign in user automatically
+      6. Redirect to order confirmation or dashboard
+  - [ ] 14.5 Handle account upgrade errors
+    - If email already exists:
+      - Show error: "An account with this email already exists"
+      - Offer "Sign In Instead" option
+    - If linking fails:
+      - Create separate permanent account
+      - Copy guest orders to new account (don't delete anonymous orders)
+    - Show toast notifications for success/error
+  - [ ] 14.6 Add "Sign In" option to header
+    - Small "Sign In" link in header navigation
+    - Does NOT block ordering flow
+    - Opens sign-in modal or navigates to sign-in page
+    - Separate from guest checkout flow
+  - [ ] 14.7 Create sign-in modal/screen (if not already exists)
+    - Email and password fields
+    - "Sign In" button
+    - "Forgot Password" link
+    - "Don't have an account? Sign Up" link
+    - Social auth buttons (Google, Facebook) - optional
+  - [ ] 14.8 Test account upgrade flow
+    - Place order as guest
+    - See account creation prompt
+    - Create account
+    - Verify user logged in
+    - Verify guest orders linked to new account
+    - Test error scenarios (email exists, etc.)
+  - [ ] 14.9 Run account upgrade tests
+    - Run ONLY the 2-6 tests from 14.1
+    - Verify upgrade flow works
+    - Test error handling
+    - Do NOT run entire test suite
+
+**Acceptance Criteria:**
+- Tests from 14.1 pass (2-6 tests)
+- Account creation prompt shows for guests
+- Users can skip account creation
+- Account upgrade links guest orders
+- User logged in after account creation
+- Error handling works correctly
+- Sign-in option available in header
+
+---
+
+### Phase 7: Testing & Integration
+
+#### Task Group 15: Integration Testing and Bug Fixes
+**Dependencies:** All previous task groups
+**Effort:** 2 days
+**Specialist:** QA Engineer / Full-stack Engineer
+
+- [ ] 15.0 Run comprehensive integration tests and fix bugs
+  - [ ] 15.1 Review existing tests from all task groups
+    - Collect tests from Task Groups 1.1, 2.1, 3.1, 4.1, 5.1, 6.1, 7.1, 8.1, 9.1, 10.1, 11.1, 12.1, 13.1, 14.1
+    - Total expected: approximately 28-70 tests (2-6 per group × 14 groups)
+  - [ ] 15.2 Identify critical integration test gaps
+    - Analyze end-to-end user flows NOT covered by existing tests
+    - Focus on:
+      - Full QR code → order → checkout flow
+      - Full landing page → reservation flow
+      - Guest checkout → account creation flow
+      - Menu filtering across different order types
+    - Prioritize flows that cross multiple components/systems
+  - [ ] 15.3 Write up to 10 additional integration tests maximum
+    - Test 1: Complete QR code flow (scan → menu → cart → checkout → order placed)
+    - Test 2: Complete reservation flow (landing → intent → form → confirmation)
+    - Test 3: Guest checkout and account upgrade (guest order → create account → orders linked)
+    - Test 4: Menu filtering by order type (dine-in vs takeaway products)
+    - Test 5: Navigation flow with browser back button
+    - Test 6: Admin workflow (configure landing → generate QR → manage reservation)
+    - Test 7: Reservation auto-cancellation (create past reservation → wait → verify no-show)
+    - Test 8-10: Additional critical gaps identified in 15.2
+  - [ ] 15.4 Run feature-specific test suite
+    - Run all tests from task groups 1-14 (28-70 tests)
+    - Run additional integration tests from 15.3 (up to 10 tests)
+    - Total expected: approximately 38-80 tests
+    - Do NOT run entire application test suite
+    - Focus only on customer flow redesign feature
+  - [ ] 15.5 Fix failing tests and bugs
+    - Debug any test failures
+    - Fix bugs discovered during testing
+    - Re-run tests after fixes
+    - Document any known issues or limitations
+  - [ ] 15.6 Manual testing on multiple devices
+    - Test on iPhone (Safari)
+    - Test on Android (Chrome)
+    - Test on iPad (Safari)
+    - Test on Desktop (Chrome, Firefox, Safari)
+    - Verify responsive design works
+    - Check loading times and performance
+  - [ ] 15.7 Test backward compatibility
+    - Verify existing features still work:
+      - Normal customer ordering (without new flow)
+      - Admin product/category management
+      - Order status updates
+      - Kitchen display system
+    - Test with existing data (no migration needed)
+    - Verify no breaking changes
+
+**Acceptance Criteria:**
+- All feature-specific tests pass (38-80 tests total)
+- No more than 10 additional tests added
+- Critical user workflows covered by tests
+- No regressions in existing features
+- Mobile-responsive design verified on 4+ devices
+- Performance meets targets (<2s landing page load)
+
+---
+
+### Phase 8: Deployment & Rollout
+
+#### Task Group 16: Deployment and Production Rollout
+**Dependencies:** Task Group 15
+**Effort:** 1-2 days
+**Specialist:** DevOps Engineer / Full-stack Engineer
+
+- [ ] 16.0 Deploy feature to production in phases
+  - [ ] 16.1 Phase 1: Deploy backend infrastructure
+    - Deploy updated Firestore Security Rules
+      - File: `/Users/clivestruver/Projects/restaurant-management-system/firestore.rules`
+      - Run: `firebase deploy --only firestore:rules`
+    - Deploy updated Storage Security Rules
+      - File: `/Users/clivestruver/Projects/restaurant-management-system/storage.rules`
+      - Run: `firebase deploy --only storage`
+    - Deploy Cloud Function: autoCancelNoShows
+      - Run: `firebase deploy --only functions:autoCancelNoShows`
+    - Verify deployments succeed
+    - Check Firebase Console for any errors
+  - [ ] 16.2 Phase 2: Deploy admin UI updates
+    - Build production bundle
+      - Run: `npm run build`
+      - Verify build succeeds without errors
+    - Deploy to hosting
+      - Run: `firebase deploy --only hosting` (or your deployment method)
+    - Test admin components in production:
+      - Landing Page Settings
+      - QR Code Manager
+      - Reservation Manager
+      - Product availability checkboxes
+    - Verify admin can configure landing page and generate QR codes
+  - [ ] 16.3 Phase 3: Deploy customer UI - Part 1 (Landing & Intent)
+    - Already deployed in 16.2 (same build)
+    - Test customer-facing components:
+      - Landing Page rendering
+      - Intent Selection
+      - Order Type Selection
+    - Verify navigation flow works
+    - Check mobile responsiveness
+  - [ ] 16.4 Phase 4: Deploy customer UI - Part 2 (QR & Reservations)
+    - Already deployed in 16.2 (same build)
+    - Test QR code entry flow:
+      - Generate QR code in admin
+      - Scan QR code (or manually enter URL with table param)
+      - Verify skip to menu with table number
+    - Test reservation flow:
+      - Fill reservation form
+      - Submit reservation
+      - Verify confirmation shows
+      - Check admin reservation manager
+  - [ ] 16.5 Phase 5: Verify guest checkout and auth
+    - Already deployed in 16.2 (same build)
+    - Test guest checkout:
+      - Log out or use incognito
+      - Place order as guest
+      - Verify order created
+      - See account creation prompt
+      - Create account
+      - Verify orders linked
+    - Test sign-in flow
+  - [ ] 16.6 Phase 6: Monitor and pilot test
+    - Set up monitoring:
+      - Cloud Function logs (auto-cancellation)
+      - Firestore write operations (reservations, orders)
+      - Error tracking (Sentry, Firebase Crashlytics, etc.)
+    - Pilot with 1-2 test tenants
+      - Provide QR codes for tables
+      - Monitor first week of usage
+      - Gather feedback from staff and customers
+    - Check success metrics:
+      - Landing page load time (<2s)
+      - QR code scan to menu time (<3s)
+      - Guest checkout conversion rate
+      - Reservation creation rate
+      - No-show auto-cancellation accuracy
+  - [ ] 16.7 Address pilot feedback and bugs
+    - Fix any issues discovered during pilot
+    - Iterate on UX based on feedback
+    - Optimize performance if needed
+    - Re-deploy fixes
+  - [ ] 16.8 Full production rollout
+    - Enable feature for all tenants
+    - Communicate new features via:
+      - In-app notifications
+      - Email to admin users
+      - Documentation/help center
+    - Monitor for 48 hours post-rollout
+    - Be ready to rollback if critical issues arise
+
+**Acceptance Criteria:**
+- All deployment phases completed successfully
+- Cloud Function runs on schedule without errors
+- Admin UI accessible and functional in production
+- Customer UI renders correctly on all devices
+- QR code flow works end-to-end
+- Reservation system operational
+- Guest checkout works without issues
+- Pilot test successful with positive feedback
+- No critical bugs in production
+- Monitoring and alerts configured
+
+---
+
+## Summary
+
+### Total Effort Breakdown
+
+| Phase | Task Groups | Estimated Effort | Specialist |
+|-------|-------------|------------------|------------|
+| Phase 0: Foundation | 1 group | 0.5 day | Full-stack |
+| Milestone 1: Landing Page | 3 groups | 5 days | Backend (1d) + Frontend (4d) |
+| Milestone 2: Intent & Type Selection | 3 groups | 3.5 days | Frontend |
+| Milestone 3: QR Codes | 1 group | 1.5 days | Frontend |
+| Milestone 4: Reservations | 4 groups | 6.5 days | Backend (2.5d) + Frontend (4d) |
+| Milestone 5: Menu Differentiation | 1 group | 1.5 days | Full-stack |
+| Milestone 6: Guest Checkout | 2 groups | 4 days | Full-stack |
+| Phase 7: Testing | 1 group | 2 days | QA / Full-stack |
+| Phase 8: Deployment | 1 group | 1-2 days | DevOps / Full-stack |
+| **TOTAL** | **17 groups** | **25-26 days** | **3-4 weeks** |
+
+### Test Coverage Summary
+
+- **Unit/Component Tests:** 28-70 tests (2-6 per task group × 14 groups)
+- **Integration Tests:** Up to 10 additional tests (Task Group 15)
+- **Total Feature Tests:** ~38-80 tests
+- **Focus:** Critical workflows only, no exhaustive coverage
+- **Scope:** This feature only, not entire application
+
+### Key Dependencies
+
+**External:**
+- qrcode.react
+- react-datepicker
+- libphonenumber-js
+- jszip (optional)
+
+**Internal:**
+- Phase 2 complete (User Invitation, Offline, Dine-In)
+- Multi-tenant architecture (TenantContext)
+- Existing product/order system
+- Firebase services (Auth, Firestore, Storage, Functions)
+
+### Success Metrics
+
+**Customer Experience:**
+- Landing page load: <2 seconds ✓
+- QR code to menu: <3 seconds ✓
+- Reservation form completion: <2 minutes ✓
+- Guest checkout: <5 fields ✓
+
+**Technical:**
+- Mobile-responsive: 100% functional ✓
+- Backward compatible: 0 breaking changes ✓
+- TypeScript compilation: Success ✓
+- Security: Tenant-isolated ✓
+
+**Business Impact:**
+- Time-to-order reduction: 30% ✓
+- QR code adoption: 50% of dine-in orders ✓
+- Reservation no-show rate: <10% ✓
+- Guest checkout conversion: >80% ✓
+
+---
+
+## Execution Order
+
+Recommended implementation sequence for optimal flow:
+
+1. **Week 1:** Foundation + Landing Page + Intent/Type Selection (Task Groups 0-6)
+2. **Week 2:** QR Codes + Reservations Backend (Task Groups 7-8)
+3. **Week 3:** Reservations Frontend + Auto-Cancel + Menu Differentiation (Task Groups 9-12)
+4. **Week 4:** Guest Checkout + Testing + Deployment (Task Groups 13-16)
+
+---
+
+## Notes for Developers
+
+- **File Paths:** All file paths in tasks are absolute paths to the project root
+- **Testing Strategy:** Each task group writes 2-6 focused tests and runs ONLY those tests, not entire suite
+- **Backward Compatibility:** All changes maintain backward compatibility (no data migrations needed)
+- **Mobile-First:** Design and test mobile experience first (90% of traffic)
+- **Reuse Patterns:** Leverage existing components (CartModal, SettingsManager, ImagePicker, etc.)
+- **Security:** All Firestore operations enforce tenant isolation
+- **Performance:** Optimize image loading (lazy load, size limits) and bundle size
+- **Error Handling:** Gracefully handle missing data, upload failures, network errors
+- **Accessibility:** Touch targets ≥44x44px, color contrast ≥4.5:1, keyboard navigation
+
+---
+
+**Document Status:** Ready for Implementation
+**Last Updated:** October 26, 2025
+**Next Steps:**
+1. Assign task groups to developers based on specialization
+2. Set up project tracking (GitHub Issues, Jira, Linear, etc.)
+3. Create feature branch: `feature/customer-flow-redesign`
+4. Begin Milestone 0 (Foundation & Setup)
+5. Daily standups to track progress and unblock issues
+6. Code reviews after each milestone completion

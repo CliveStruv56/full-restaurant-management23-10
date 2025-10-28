@@ -1,0 +1,953 @@
+# Task Breakdown: Table-Reservation Linking & Double-Booking Prevention
+
+## Overview
+
+**Feature:** Phase 3A - Table-Reservation Linking & Double-Booking Prevention
+**Timeline:** 5 days (Nov 1-5, 2025)
+**Total Tasks:** 18 tasks grouped into 6 implementation areas
+**Spec Location:** `/Users/clivestruver/Projects/restaurant-management-system/agent-os/specs/2025-10-27-table-reservation-linking/spec.md`
+
+## Task List
+
+---
+
+## Group 1: Data Model & Type Definitions (Day 1)
+
+**Estimated Effort:** 3-4 hours
+**Dependencies:** None
+**Implementer:** Backend Engineer
+
+### Task 1.1: Extend Reservation Interface with New Fields
+
+**Files to Modify:**
+- `/Users/clivestruver/Projects/restaurant-management-system/types.ts`
+
+**Changes Required:**
+- Add `assignedTableId?: string` field to Reservation interface (line ~323)
+- Add `assignedTableNumber?: number` field to Reservation interface
+- Add `duration?: number` field to Reservation interface (in minutes)
+- Add JSDoc comments explaining each new field and backward compatibility
+
+**Acceptance Criteria:**
+- [ ] All three fields added to Reservation interface with optional (?) modifier
+- [ ] JSDoc comments document field purpose and backward compatibility
+- [ ] TypeScript compilation succeeds with no errors
+- [ ] Existing code that uses Reservation interface still compiles
+
+**Dependencies:** None
+**Effort:** S (30 minutes)
+
+---
+
+### Task 1.2: Write Unit Tests for Duration Calculation Logic
+
+**Files to Create:**
+- `/Users/clivestruver/Projects/restaurant-management-system/firebase/__tests__/calculateReservationDuration.test.ts`
+
+**Changes Required:**
+- Create test file with 2-6 focused test cases for duration calculation
+- Test Case 1: Breakfast time (09:00) returns breakfast duration (45 min)
+- Test Case 2: Lunch time (13:00) returns lunch duration (60 min)
+- Test Case 3: Dinner time (19:00) returns dinner duration (90 min)
+- Test Case 4: No tableOccupation settings returns default 90 min
+- Test Case 5: Edge case - Time boundary (11:00) returns lunch duration
+
+**Acceptance Criteria:**
+- [ ] Test file created with 4-6 test cases maximum
+- [ ] Tests cover breakfast, lunch, dinner periods
+- [ ] Tests cover default fallback when settings not configured
+- [ ] Tests use realistic AppSettings structure from types.ts
+- [ ] All tests initially fail (function not implemented yet)
+
+**Dependencies:** Task 1.1
+**Effort:** S (30 minutes)
+
+---
+
+### Task 1.3: Implement calculateReservationDuration() Helper Function
+
+**Files to Modify:**
+- `/Users/clivestruver/Projects/restaurant-management-system/firebase/api-multitenant.ts`
+
+**Changes Required:**
+- Add `calculateReservationDuration()` function at end of file (after line ~800)
+- Parse time string (HH:mm format) to extract hour
+- Determine service period based on hour:
+  - 06:00-11:00 → breakfast
+  - 11:00-15:00 → lunch
+  - 15:00-22:00 → dinner
+- Return duration from `tableOccupation.servicePeriods[period]` if configured
+- Return 90 minutes default if tableOccupation not configured
+- Add JSDoc comments with function signature from spec.md (lines 555-577)
+
+**Acceptance Criteria:**
+- [ ] Function implemented with signature matching spec.md
+- [ ] Function correctly parses time string and determines service period
+- [ ] Function returns configured duration from settings if available
+- [ ] Function returns 90 min default if settings not configured
+- [ ] All tests from Task 1.2 pass
+- [ ] TypeScript compilation succeeds
+
+**Dependencies:** Task 1.1, Task 1.2
+**Effort:** M (1 hour)
+
+---
+
+### Task 1.4: Build Verification - Data Model Layer
+
+**Files to Check:**
+- All modified files from Group 1
+
+**Changes Required:**
+- Run `npm run build` or TypeScript compiler
+- Verify no TypeScript errors
+- Run tests: `npm test -- calculateReservationDuration.test.ts`
+- Verify all 4-6 duration calculation tests pass
+
+**Acceptance Criteria:**
+- [ ] TypeScript compilation succeeds with zero errors
+- [ ] All unit tests from Task 1.2 pass (4-6 tests)
+- [ ] No breaking changes to existing Reservation usage
+- [ ] Git commit with message: "feat: Add duration calculation for reservations"
+
+**Dependencies:** Tasks 1.1, 1.2, 1.3
+**Effort:** S (15 minutes)
+
+---
+
+## Group 2: Availability Checking Function (Day 2)
+
+**Estimated Effort:** 4-5 hours
+**Dependencies:** Group 1
+**Implementer:** Backend Engineer
+
+### Task 2.1: Write Unit Tests for Table Availability Checking
+
+**Files to Create:**
+- `/Users/clivestruver/Projects/restaurant-management-system/firebase/__tests__/checkTableAvailability.test.ts`
+
+**Changes Required:**
+- Create test file with 6-8 focused test cases for availability checking
+- Test Case 1: No existing reservations → returns true
+- Test Case 2: Existing reservation before requested window (no overlap) → returns true
+- Test Case 3: Existing reservation after requested window (no overlap) → returns true
+- Test Case 4: Existing reservation overlaps start of requested window → returns false
+- Test Case 5: Existing reservation overlaps end of requested window → returns false
+- Test Case 6: Requested window completely contained in existing reservation → returns false
+- Test Case 7: Exclude reservation ID parameter → returns true (ignores specified reservation)
+- Test Case 8: Only check 'confirmed' and 'seated' status (ignore 'cancelled') → returns true
+- Use mock Firestore queries (jest.mock or test doubles)
+
+**Acceptance Criteria:**
+- [ ] Test file created with 6-8 test cases maximum
+- [ ] Tests cover all time overlap scenarios from spec.md (lines 680-687)
+- [ ] Tests verify only 'confirmed' and 'seated' reservations checked
+- [ ] Tests verify excludeReservationId parameter works correctly
+- [ ] Firestore queries mocked (no real database calls)
+- [ ] All tests initially fail (function not implemented yet)
+
+**Dependencies:** Task 1.4 (completed Group 1)
+**Effort:** M (1.5 hours)
+
+---
+
+### Task 2.2: Implement checkTableAvailability() Function
+
+**Files to Modify:**
+- `/Users/clivestruver/Projects/restaurant-management-system/firebase/api-multitenant.ts`
+
+**Changes Required:**
+- Add `checkTableAvailability()` function exported at module level
+- Implement function signature from spec.md (lines 320-363):
+  - Parameters: tenantId, tableId, date, startTime, duration, excludeReservationId?
+  - Return: Promise<boolean>
+- Parse requested time window: `new Date(date + 'T' + startTime)`
+- Calculate requested end time: `requestedStart + duration * 60000`
+- Query Firestore for reservations:
+  - Collection: `tenants/{tenantId}/reservations`
+  - Where: `assignedTableId == tableId`
+  - Where: `date == date`
+  - Where: `status in ['confirmed', 'seated']`
+- For each reservation, check time overlap:
+  - Parse existing start: `new Date(reservation.date + 'T' + reservation.time)`
+  - Calculate existing end: `existingStart + reservation.duration * 60000`
+  - Overlap condition: `requestedStart < existingEnd && existingStart < requestedEnd`
+- Skip reservation if `reservation.id === excludeReservationId`
+- Return false if any overlap found, true if no overlaps
+
+**Acceptance Criteria:**
+- [ ] Function implemented with signature matching spec.md
+- [ ] Firestore query correctly filters by tableId, date, and status
+- [ ] Time overlap detection logic matches spec algorithm (lines 169-174)
+- [ ] excludeReservationId parameter correctly skips specified reservation
+- [ ] Function handles edge cases: missing duration defaults to 90 min
+- [ ] All tests from Task 2.1 pass (6-8 tests)
+- [ ] TypeScript compilation succeeds
+
+**Dependencies:** Task 2.1
+**Effort:** M (2 hours)
+
+---
+
+### Task 2.3: Create Firestore Composite Index for Availability Queries
+
+**Files to Modify:**
+- `/Users/clivestruver/Projects/restaurant-management-system/firestore.rules` (add comment)
+- Firestore console (manual index creation)
+
+**Changes Required:**
+- Document required index in firestore.rules as comment:
+  ```
+  // REQUIRED COMPOSITE INDEX for checkTableAvailability():
+  // Collection: tenants/{tenantId}/reservations
+  // Fields: assignedTableId (Ascending), date (Ascending), status (Ascending)
+  ```
+- Create composite index via Firebase Console or firebase CLI:
+  - Collection group: No (collection-specific)
+  - Collection path: `tenants/{tenantId}/reservations`
+  - Fields indexed:
+    1. assignedTableId (Ascending)
+    2. date (Ascending)
+    3. status (Ascending)
+  - Query scope: Collection
+- Test index with sample query in Firebase Console
+- Document index creation in spec.md Section "Firestore Indexes Required" (lines 123-134)
+
+**Acceptance Criteria:**
+- [ ] Composite index created in Firestore console
+- [ ] Index status shows "Enabled" (not "Building")
+- [ ] Test query in console succeeds using all three fields
+- [ ] Comment added to firestore.rules documenting index
+- [ ] Screenshot or confirmation of index creation saved
+
+**Dependencies:** Task 2.2
+**Effort:** S (30 minutes)
+
+---
+
+### Task 2.4: Build Verification - Availability Checking Layer
+
+**Files to Check:**
+- `/Users/clivestruver/Projects/restaurant-management-system/firebase/api-multitenant.ts`
+- `/Users/clivestruver/Projects/restaurant-management-system/firebase/__tests__/checkTableAvailability.test.ts`
+
+**Changes Required:**
+- Run TypeScript compiler: `npm run build`
+- Run availability tests: `npm test -- checkTableAvailability.test.ts`
+- Verify all 6-8 tests pass
+- Manual test with real Firestore data:
+  1. Create test reservation for Table 1 at 19:00-20:30
+  2. Call `checkTableAvailability()` for Table 1 at 19:30 → should return false
+  3. Call `checkTableAvailability()` for Table 1 at 21:00 → should return true
+
+**Acceptance Criteria:**
+- [ ] TypeScript compilation succeeds
+- [ ] All 6-8 unit tests pass
+- [ ] Manual Firestore test shows correct availability results
+- [ ] Firestore composite index query completes in < 500ms
+- [ ] Git commit: "feat: Add table availability checking with conflict detection"
+
+**Dependencies:** Tasks 2.1, 2.2, 2.3
+**Effort:** S (30 minutes)
+
+---
+
+## Group 3: Table Assignment Logic (Day 3)
+
+**Estimated Effort:** 4-5 hours
+**Dependencies:** Group 2
+**Implementer:** Backend Engineer
+
+### Task 3.1: Write Unit Tests for Table Assignment
+
+**Files to Create:**
+- `/Users/clivestruver/Projects/restaurant-management-system/firebase/__tests__/assignTableToReservation.test.ts`
+
+**Changes Required:**
+- Create test file with 4-6 focused test cases for assignment logic
+- Test Case 1: Auto-assign first available table (no tableId provided)
+- Test Case 2: Manual assign specific table (tableId provided)
+- Test Case 3: No tables with sufficient capacity → throws error
+- Test Case 4: All tables booked → throws error "No tables available"
+- Test Case 5: Table capacity check (table capacity < partySize) → skips table
+- Test Case 6: Specific table not available → throws error "Table X is not available"
+- Mock Firestore batch writes
+- Mock `checkTableAvailability()` function
+
+**Acceptance Criteria:**
+- [x] Test file created with 4-6 test cases maximum
+- [x] Tests cover auto-assignment and manual assignment scenarios
+- [x] Tests verify error cases (no capacity, no availability)
+- [x] Tests verify batch writes for reservation + table update
+- [x] Firestore operations mocked (no real database calls)
+- [x] All tests initially fail (function not implemented yet)
+
+**Dependencies:** Task 2.4 (completed Group 2)
+**Effort:** M (1.5 hours)
+
+---
+
+### Task 3.2: Implement assignTableToReservation() Function
+
+**Files to Modify:**
+- `/Users/clivestruver/Projects/restaurant-management-system/firebase/api-multitenant.ts`
+
+**Changes Required:**
+- Add `assignTableToReservation()` function exported at module level
+- Implement function signature from spec.md (lines 373-477):
+  - Parameters: tenantId, reservationId, tableId? (optional)
+  - Return: Promise<void>
+- Get reservation using existing `getReservation()` function
+- Ensure duration is set (use reservation.duration or default 90)
+- If `tableId` provided (manual assignment):
+  - Get table using existing `getTable()` function
+  - Validate table capacity >= reservation.partySize
+  - Call `checkTableAvailability()` with excludeReservationId
+  - If available, call helper `assignTable()`
+  - If not available, throw error with table number in message
+- If `tableId` NOT provided (auto-assignment):
+  - Query all tables ordered by number ascending
+  - Filter tables by capacity >= partySize
+  - For each table, call `checkTableAvailability()`
+  - Assign first available table using helper `assignTable()`
+  - If no tables available, throw error "No tables available for this party size and time slot"
+- Implement helper function `assignTable()` (not exported):
+  - Use Firestore batch to update reservation + table atomically
+  - Update reservation: set assignedTableId, assignedTableNumber, duration, updatedAt
+  - Update table: set status to 'reserved'
+  - Commit batch
+
+**Acceptance Criteria:**
+- [x] Function implemented with signature matching spec.md
+- [x] Auto-assignment assigns lowest table number first
+- [x] Manual assignment validates capacity and availability
+- [x] Helper function uses Firestore batch for atomic updates
+- [x] Error messages are descriptive and include table numbers
+- [x] All tests from Task 3.1 pass (4-6 tests)
+- [x] TypeScript compilation succeeds
+
+**Dependencies:** Task 3.1
+**Effort:** M (2 hours)
+
+---
+
+### Task 3.3: Write Unit Tests for Reservation Status Updates
+
+**Files to Create:**
+- `/Users/clivestruver/Projects/restaurant-management-system/firebase/__tests__/updateReservationStatus.test.ts`
+
+**Changes Required:**
+- Create test file with 4-6 focused test cases for status lifecycle
+- Test Case 1: pending → confirmed (no assignedTableId) → calls assignTableToReservation()
+- Test Case 2: confirmed → seated → table status 'occupied'
+- Test Case 3: seated → completed → table status 'available'
+- Test Case 4: confirmed → cancelled → table status 'available', clears assignedTableId
+- Test Case 5: confirmed → no-show → table status 'available', keeps assignedTableId
+- Test Case 6: pending → cancelled → no table updates (no table assigned)
+- Mock Firestore batch writes
+- Mock `assignTableToReservation()` function
+
+**Acceptance Criteria:**
+- [x] Test file created with 4-6 test cases maximum
+- [x] Tests cover all status transitions from spec.md (lines 236-259)
+- [x] Tests verify table status updates match lifecycle rules
+- [x] Tests verify assignedTableId cleared on cancellation
+- [x] Tests verify auto-assignment called on pending → confirmed
+- [x] All tests initially fail (function not updated yet)
+
+**Dependencies:** Task 3.2
+**Effort:** M (1 hour)
+
+---
+
+### Task 3.4: Update updateReservationStatus() with Lifecycle Logic
+
+**Files to Modify:**
+- `/Users/clivestruver/Projects/restaurant-management-system/firebase/api-multitenant.ts`
+
+**Changes Required:**
+- Locate existing `updateReservationStatus()` function (search for function name)
+- Add logic from spec.md (lines 486-546):
+  - Get current reservation using `getReservation()`
+  - If status === 'confirmed' AND !reservation.assignedTableId:
+    - Call `assignTableToReservation(tenantId, reservationId)` (auto-assign)
+    - Return early (assignTableToReservation updates reservation)
+  - If reservation.assignedTableId exists, handle table status updates:
+    - Status 'seated' → table status 'occupied'
+    - Status 'completed' → table status 'available'
+    - Status 'cancelled' → table status 'available', clear assignedTableId/assignedTableNumber
+    - Status 'no-show' → table status 'available', keep assignedTableId
+  - Use Firestore batch to update reservation + table atomically
+  - Update reservation: set status, updatedAt, adminNotes (if provided)
+  - Update table: set status based on transition rules
+  - Commit batch
+
+**Acceptance Criteria:**
+- [x] Function handles all status transitions from spec.md state machine
+- [x] Auto-assignment triggered when confirming pending reservation
+- [x] Table status synchronized with reservation status
+- [x] Batch writes ensure atomicity
+- [x] adminNotes parameter preserved (existing behavior)
+- [x] All tests from Task 3.3 pass (4-6 tests)
+- [x] TypeScript compilation succeeds
+
+**Dependencies:** Task 3.3
+**Effort:** M (1.5 hours)
+
+---
+
+### Task 3.5: Update createReservation() to Calculate Duration
+
+**Files to Modify:**
+- `/Users/clivestruver/Projects/restaurant-management-system/firebase/api-multitenant.ts`
+
+**Changes Required:**
+- Locate existing `createReservation()` function
+- Add duration calculation before creating reservation:
+  - Call `getSettings(tenantId)` to get AppSettings
+  - Call `calculateReservationDuration(reservationData.time, settings.tableOccupation)`
+  - Store duration in reservation document
+- Update reservation document creation to include duration field
+- Do NOT auto-assign table (assignment happens on confirmation)
+- Follow spec.md implementation (lines 285-311)
+
+**Acceptance Criteria:**
+- [x] Function calculates duration using calculateReservationDuration()
+- [x] Duration stored in reservation document at creation
+- [x] Reservation still created with status 'pending' (no auto-assignment)
+- [x] Existing createReservation behavior preserved
+- [x] TypeScript compilation succeeds
+- [x] Manual test: Create reservation → verify duration field in Firestore
+
+**Dependencies:** Task 3.4
+**Effort:** S (30 minutes)
+
+---
+
+### Task 3.6: Build Verification - Assignment Layer
+
+**Files to Check:**
+- All modified files from Group 3
+
+**Changes Required:**
+- Run TypeScript compiler: `npm run build`
+- Run all tests for Group 3:
+  - `npm test -- assignTableToReservation.test.ts`
+  - `npm test -- updateReservationStatus.test.ts`
+- Verify 8-12 tests pass (4-6 per file)
+- Integration test with real Firestore:
+  1. Create reservation (status 'pending')
+  2. Confirm reservation (status → 'confirmed')
+  3. Verify assignedTableId and assignedTableNumber set
+  4. Verify table status changed to 'reserved'
+  5. Update to 'seated' → verify table status 'occupied'
+  6. Update to 'completed' → verify table status 'available'
+
+**Acceptance Criteria:**
+- [ ] TypeScript compilation succeeds
+- [ ] All 8-12 unit tests pass
+- [ ] Integration test demonstrates full lifecycle
+- [ ] No double-bookings possible (verified manually)
+- [ ] Git commit: "feat: Add table assignment and status lifecycle management"
+
+**Dependencies:** Tasks 3.1, 3.2, 3.3, 3.4, 3.5
+**Effort:** S (30 minutes)
+
+---
+
+## Group 4: Admin UI - ReservationManager Updates (Day 4 Morning)
+
+**Estimated Effort:** 3-4 hours
+**Dependencies:** Group 3
+**Implementer:** Frontend Engineer
+
+### Task 4.1: Write Component Tests for ReservationManager
+
+**Files to Create:**
+- `/Users/clivestruver/Projects/restaurant-management-system/components/admin/__tests__/ReservationManager.test.tsx`
+
+**Changes Required:**
+- Create test file with 4-6 focused component tests
+- Test Case 1: Renders "Assigned Table" column header
+- Test Case 2: Shows "Table X" when assignedTableNumber exists
+- Test Case 3: Shows "Unassigned" when assignedTableNumber is null
+- Test Case 4: Shows "Assign Table" dropdown for pending reservations
+- Test Case 5: Dropdown loads available tables when opened
+- Test Case 6: Clicking table in dropdown calls assignTableToReservation()
+- Use React Testing Library (@testing-library/react)
+- Mock Firebase API functions
+
+**Acceptance Criteria:**
+- [ ] Test file created with 4-6 test cases maximum
+- [ ] Tests cover new UI elements (column, dropdown)
+- [ ] Tests verify correct data display logic
+- [ ] Tests verify dropdown interaction flow
+- [ ] Firebase functions mocked
+- [ ] All tests initially fail (UI not implemented yet)
+
+**Dependencies:** Task 3.6 (completed Group 3)
+**Effort:** M (1 hour)
+
+---
+
+### Task 4.2: Add "Assigned Table" Column to ReservationManager
+
+**Files to Modify:**
+- `/Users/clivestruver/Projects/restaurant-management-system/components/admin/ReservationManager.tsx`
+
+**Changes Required:**
+- Add new table column header "Assigned Table" after "Party" column (around line 150)
+- Add table cell displaying assigned table:
+  - If `reservation.assignedTableNumber` exists: display "Table {number}"
+  - If not assigned: display "Unassigned" in gray text (#6c757d)
+- Match existing table cell styling (consistent with other columns)
+- Ensure column is responsive and doesn't break layout
+- Follow spec.md UI requirements (lines 589-595)
+
+**Acceptance Criteria:**
+- [x] Column header added in correct position
+- [x] Cell displays "Table X" when assigned
+- [x] Cell displays "Unassigned" in gray when not assigned
+- [x] Styling matches existing columns
+- [x] Responsive layout preserved
+- [ ] Tests from Task 4.1 (cases 1-3) pass
+
+**Dependencies:** Task 4.1
+**Effort:** S (30 minutes)
+
+---
+
+### Task 4.3: Implement "Assign Table" Dropdown in ReservationManager
+
+**Files to Modify:**
+- `/Users/clivestruver/Projects/restaurant-management-system/components/admin/ReservationManager.tsx`
+
+**Changes Required:**
+- Add state for available tables: `const [availableTables, setAvailableTables] = useState<Map<string, Table[]>>(new Map())`
+- Add state for dropdown loading: `const [loadingTables, setLoadingTables] = useState<string | null>(null)`
+- Add "Assign Table" dropdown button in Actions column for pending reservations:
+  - Show only if `reservation.status === 'pending'` AND `!reservation.assignedTableId`
+  - Render as dropdown button (use existing dropdown component pattern)
+- On dropdown open, fetch available tables:
+  - Call `streamTables(tenantId, ...)` to get all tables
+  - For each table, call `checkTableAvailability(tenantId, table.id, reservation.date, reservation.time, reservation.duration || 90)`
+  - Filter to tables where capacity >= reservation.partySize AND availability === true
+  - Cache results in `availableTables` map keyed by reservationId
+- Dropdown menu items:
+  - Format: "Table {number} (Capacity: {capacity})"
+  - If no tables available: Show disabled item "No tables available"
+- On table selection:
+  - Call `assignTableToReservation(tenantId, reservationId, selectedTableId)`
+  - Show loading spinner during API call
+  - On success: Show toast "Table {number} assigned to reservation"
+  - On error: Show toast with error message
+- Follow spec.md UI requirements (lines 597-616)
+
+**Acceptance Criteria:**
+- [x] Dropdown only shown for pending, unassigned reservations
+- [x] Dropdown fetches and filters available tables correctly
+- [x] Dropdown displays tables with capacity and number
+- [x] Dropdown handles "no tables available" case
+- [x] Clicking table triggers API call with loading state
+- [x] Success/error toasts displayed with correct messages
+- [x] Available tables cached to avoid repeated API calls
+- [ ] Tests from Task 4.1 (cases 4-6) pass
+
+**Dependencies:** Task 4.2
+**Effort:** M (2 hours)
+
+---
+
+### Task 4.4: Build Verification - Admin UI Layer
+
+**Files to Check:**
+- `/Users/clivestruver/Projects/restaurant-management-system/components/admin/ReservationManager.tsx`
+- Component tests
+
+**Changes Required:**
+- Run TypeScript compiler: `npm run build`
+- Run component tests: `npm test -- ReservationManager.test.tsx`
+- Verify all 4-6 tests pass
+- Manual UI test:
+  1. Open ReservationManager as admin
+  2. Verify "Assigned Table" column visible
+  3. Create pending reservation with no assigned table
+  4. Verify "Assign Table" dropdown appears
+  5. Click dropdown → verify available tables listed
+  6. Select table → verify assignment succeeds
+  7. Verify "Assigned Table" column updates to "Table X"
+
+**Acceptance Criteria:**
+- [x] TypeScript compilation succeeds
+- [ ] All 4-6 component tests pass
+- [ ] Manual UI test demonstrates full assign flow
+- [ ] UI is responsive and matches design
+- [ ] No console errors or warnings
+- [ ] Git commit: "feat: Add table assignment UI to ReservationManager"
+
+**Dependencies:** Tasks 4.1, 4.2, 4.3
+**Effort:** S (30 minutes)
+
+---
+
+## Group 5: Customer UI - FloorPlanDisplay Updates (Day 4 Afternoon)
+
+**Estimated Effort:** 2-3 hours
+**Dependencies:** Group 4
+**Implementer:** Frontend Engineer
+
+### Task 5.1: Write Component Tests for FloorPlanDisplay Filtering
+
+**Files to Create:**
+- `/Users/clivestruver/Projects/restaurant-management-system/components/customer/__tests__/FloorPlanDisplay.test.tsx`
+
+**Changes Required:**
+- Create test file with 3-5 focused component tests
+- Test Case 1: Renders all tables when no date/time provided
+- Test Case 2: Filters tables by availability when date/time provided
+- Test Case 3: Shows available tables with green color (#10b981)
+- Test Case 4: Shows unavailable tables with red/gray color
+- Test Case 5: Calls checkTableAvailability() for each table
+- Mock Firebase API functions (checkTableAvailability, streamTables)
+
+**Acceptance Criteria:**
+- [ ] Test file created with 3-5 test cases maximum
+- [ ] Tests cover filtering and visual indicator logic
+- [ ] Tests verify checkTableAvailability() called correctly
+- [ ] Firebase functions mocked
+- [ ] All tests initially fail (filtering not implemented yet)
+
+**Dependencies:** Task 4.4 (completed Group 4)
+**Effort:** S (45 minutes)
+
+---
+
+### Task 5.2: Add Date/Time Filtering Props to FloorPlanDisplay
+
+**Files to Modify:**
+- `/Users/clivestruver/Projects/restaurant-management-system/components/customer/FloorPlanDisplay.tsx`
+
+**Changes Required:**
+- Add new optional props to component interface:
+  - `date?: string` - YYYY-MM-DD format
+  - `time?: string` - HH:mm format
+  - `duration?: number` - minutes (default 90)
+- Add state for table availability: `const [tableAvailability, setTableAvailability] = useState<Map<string, boolean>>(new Map())`
+- When date/time props provided, check availability for each table:
+  - Call `checkTableAvailability(tenantId, table.id, date, time, duration)` for each table
+  - Store results in `tableAvailability` map
+  - Update map when date/time props change
+- Filter rendered tables:
+  - If no date/time provided, show all tables
+  - If date/time provided, only show available tables OR show all with visual indicators
+- Update table visual styles:
+  - Available: Green (#10b981)
+  - Unavailable: Light gray with red tint, not clickable
+  - Reserved (other bookings): Orange (#f59e0b)
+- Add tooltip on hover for unavailable tables: "Table X is unavailable for selected time"
+- Follow spec.md UI requirements (lines 620-636)
+
+**Acceptance Criteria:**
+- [ ] Props added to component interface
+- [ ] Availability checked when date/time provided
+- [ ] Tables filtered or visually indicated based on availability
+- [ ] Color coding matches spec (green/red/orange)
+- [ ] Tooltips show for unavailable tables
+- [ ] Tests from Task 5.1 pass (3-5 tests)
+- [ ] TypeScript compilation succeeds
+
+**Dependencies:** Task 5.1
+**Effort:** M (1.5 hours)
+
+---
+
+### Task 5.3: Update ReservationFlow to Pass Date/Time to FloorPlanDisplay
+
+**Files to Modify:**
+- `/Users/clivestruver/Projects/restaurant-management-system/components/ReservationFlow.tsx` (if exists, otherwise check App.tsx or customer flow component)
+
+**Changes Required:**
+- Locate where FloorPlanDisplay is rendered in customer reservation flow
+- Pass selected date, time, and duration props from ReservationForm to FloorPlanDisplay:
+  - `date={selectedDate}`
+  - `time={selectedTime}`
+  - `duration={calculatedDuration || 90}`
+- Ensure date/time values update FloorPlanDisplay in real-time as user changes form fields
+- When customer clicks table in floor plan, populate `tablePreference` field in form
+- Highlight selected table in blue (#2563eb)
+- Follow spec.md integration requirements (lines 643-648)
+
+**Acceptance Criteria:**
+- [ ] FloorPlanDisplay receives date/time props from form
+- [ ] FloorPlanDisplay updates when form values change
+- [ ] Clicking available table populates tablePreference field
+- [ ] Selected table highlighted in blue
+- [ ] Integration works end-to-end (form → floor plan → form)
+- [ ] TypeScript compilation succeeds
+
+**Dependencies:** Task 5.2
+**Effort:** M (1 hour)
+
+---
+
+### Task 5.4: Build Verification - Customer UI Layer
+
+**Files to Check:**
+- `/Users/clivestruver/Projects/restaurant-management-system/components/customer/FloorPlanDisplay.tsx`
+- `/Users/clivestruver/Projects/restaurant-management-system/components/ReservationFlow.tsx`
+- Component tests
+
+**Changes Required:**
+- Run TypeScript compiler: `npm run build`
+- Run component tests: `npm test -- FloorPlanDisplay.test.tsx`
+- Verify all 3-5 tests pass
+- Manual UI test:
+  1. Open customer reservation form
+  2. Select date 2025-11-15 and time 18:00
+  3. Verify FloorPlanDisplay shows only available tables in green
+  4. Verify unavailable tables grayed out or hidden
+  5. Click available table → verify tablePreference populated
+  6. Verify selected table highlighted in blue
+  7. Submit reservation → verify tablePreference saved
+
+**Acceptance Criteria:**
+- [ ] TypeScript compilation succeeds
+- [ ] All 3-5 component tests pass
+- [ ] Manual UI test demonstrates filtering and selection
+- [ ] Color coding matches spec
+- [ ] No console errors or warnings
+- [ ] Git commit: "feat: Add date/time filtering to FloorPlanDisplay"
+
+**Dependencies:** Tasks 5.1, 5.2, 5.3
+**Effort:** S (30 minutes)
+
+---
+
+## Group 6: Integration Testing & Documentation (Day 5)
+
+**Estimated Effort:** 3-4 hours
+**Dependencies:** Groups 1-5
+**Implementer:** QA Engineer / Backend Engineer
+
+### Task 6.1: Write Integration Tests for Double-Booking Prevention
+
+**Files to Create:**
+- `/Users/clivestruver/Projects/restaurant-management-system/firebase/__tests__/integration/doubleBookingPrevention.test.ts`
+
+**Changes Required:**
+- Create integration test file with 2-4 end-to-end scenarios
+- Test Scenario 1: Create two overlapping reservations → verify different tables assigned
+  1. Create reservation A for 19:00, party size 2
+  2. Confirm reservation A → verify Table 1 assigned
+  3. Create reservation B for 19:30, party size 2
+  4. Confirm reservation B → verify Table 2 assigned (NOT Table 1)
+- Test Scenario 2: Reservation lifecycle updates table status correctly
+  1. Create and confirm reservation → table 'reserved'
+  2. Update to 'seated' → table 'occupied'
+  3. Update to 'completed' → table 'available'
+- Test Scenario 3: Manual admin assignment prevents conflicts
+  1. Create pending reservation
+  2. Admin assigns specific table via dropdown
+  3. Attempt to assign same table to different reservation → fails
+- Test Scenario 4: Cancelled reservation frees table for new booking
+  1. Create and confirm reservation A → Table 1 reserved
+  2. Cancel reservation A → Table 1 available
+  3. Create reservation B → Table 1 can be assigned
+- Use real Firestore emulator or test Firestore instance
+- Clean up test data after each scenario
+
+**Acceptance Criteria:**
+- [ ] Test file created with 2-4 integration scenarios maximum
+- [ ] Tests verify double-booking prevention end-to-end
+- [ ] Tests verify status lifecycle synchronization
+- [ ] Tests use real Firestore (emulator or test instance)
+- [ ] Test data cleaned up after each scenario
+- [ ] All tests pass demonstrating feature works correctly
+
+**Dependencies:** Task 5.4 (completed Group 5)
+**Effort:** M (2 hours)
+
+---
+
+### Task 6.2: End-to-End Test - Full Customer to Admin Flow
+
+**Files to Create:**
+- `/Users/clivestruver/Projects/restaurant-management-system/firebase/__tests__/e2e/reservationTableLinking.e2e.test.ts`
+
+**Changes Required:**
+- Create E2E test file with 1-2 complete user journey scenarios
+- Test Scenario 1: Customer books reservation → Admin confirms and assigns table
+  1. Customer opens reservation form
+  2. Customer selects date 2025-11-15, time 18:00, party size 4
+  3. FloorPlanDisplay shows available tables (green)
+  4. Customer clicks Table 2 → tablePreference set
+  5. Customer submits reservation → created with status 'pending'
+  6. Admin opens ReservationManager
+  7. Admin confirms reservation → assignedTableNumber = 2
+  8. Verify Table 2 status = 'reserved'
+  9. Verify Table 2 shows as "Reserved" in FloorPlanDisplay for that date/time
+- Test Scenario 2: Real-time double-booking prevention
+  1. Two admins (simulated) create overlapping reservations
+  2. Admin 1 confirms reservation A → Table 1 assigned
+  3. Admin 2 confirms reservation B → Table 2 assigned (NOT Table 1)
+  4. Verify no conflicts in Firestore
+- Use Firestore emulator or test instance
+- Simulate UI interactions (if using Playwright/Cypress) or API calls
+
+**Acceptance Criteria:**
+- [ ] E2E test file created with 1-2 complete scenarios maximum
+- [ ] Tests cover full customer booking flow
+- [ ] Tests cover admin management flow
+- [ ] Tests verify real-time updates and conflict prevention
+- [ ] Tests pass demonstrating feature works end-to-end
+- [ ] Test uses realistic data and timing
+
+**Dependencies:** Task 6.1
+**Effort:** M (1.5 hours)
+
+---
+
+### Task 6.3: Final Build & Test Suite Verification
+
+**Files to Check:**
+- All files from Groups 1-6
+
+**Changes Required:**
+- Run full TypeScript compilation: `npm run build`
+- Run ONLY feature-specific tests (NOT entire application test suite):
+  - Group 1: `npm test -- calculateReservationDuration.test.ts` (4-6 tests)
+  - Group 2: `npm test -- checkTableAvailability.test.ts` (6-8 tests)
+  - Group 3: `npm test -- assignTableToReservation.test.ts updateReservationStatus.test.ts` (8-12 tests)
+  - Group 4: `npm test -- ReservationManager.test.tsx` (4-6 tests)
+  - Group 5: `npm test -- FloorPlanDisplay.test.tsx` (3-5 tests)
+  - Group 6: `npm test -- doubleBookingPrevention.test.ts reservationTableLinking.e2e.test.ts` (3-6 tests)
+- Verify total tests: approximately 28-43 tests maximum
+- Verify all tests pass
+- Check for TypeScript errors or warnings
+- Check for console errors in manual UI test
+- Verify Firestore composite index enabled
+
+**Acceptance Criteria:**
+- [ ] TypeScript compilation succeeds with zero errors
+- [ ] All feature-specific tests pass (28-43 tests total)
+- [ ] No TypeScript warnings related to feature changes
+- [ ] Firestore composite index shows "Enabled" status
+- [ ] Manual smoke test shows UI working correctly
+- [ ] No breaking changes to existing features
+
+**Dependencies:** Tasks 6.1, 6.2
+**Effort:** S (30 minutes)
+
+---
+
+### Task 6.4: Documentation & Deployment Preparation
+
+**Files to Create/Modify:**
+- `/Users/clivestruver/Projects/restaurant-management-system/agent-os/specs/2025-10-27-table-reservation-linking/IMPLEMENTATION_NOTES.md`
+- `/Users/clivestruver/Projects/restaurant-management-system/docs/ADMIN_GUIDE_TABLE_ASSIGNMENT.md`
+
+**Changes Required:**
+- Create IMPLEMENTATION_NOTES.md documenting:
+  - Summary of changes made (files modified, functions added)
+  - Known limitations (simple first-available algorithm)
+  - Performance considerations (Firestore reads per availability check)
+  - Backward compatibility notes (optional fields, legacy reservations)
+  - Firestore index deployment instructions
+- Create ADMIN_GUIDE_TABLE_ASSIGNMENT.md documenting:
+  - How to manually assign tables to pending reservations
+  - How to handle "no tables available" situation
+  - How to assign tables to legacy reservations without assignedTableId
+  - Screenshots of UI (assign dropdown, assigned table column)
+  - Troubleshooting common issues
+- Update main README.md with link to new admin guide
+- Prepare deployment checklist:
+  - [ ] Deploy Firestore composite index first
+  - [ ] Verify index enabled before code deployment
+  - [ ] Deploy backend functions (api-multitenant.ts changes)
+  - [ ] Deploy frontend components (ReservationManager, FloorPlanDisplay)
+  - [ ] Test with production Firestore instance
+  - [ ] Monitor Firestore read/write counts for performance
+
+**Acceptance Criteria:**
+- [ ] IMPLEMENTATION_NOTES.md created with comprehensive details
+- [ ] ADMIN_GUIDE_TABLE_ASSIGNMENT.md created with step-by-step instructions
+- [ ] README.md updated with link to admin guide
+- [ ] Deployment checklist documented and ready
+- [ ] All documentation reviewed for accuracy
+- [ ] Git commit: "docs: Add table assignment implementation notes and admin guide"
+
+**Dependencies:** Task 6.3
+**Effort:** M (1 hour)
+
+---
+
+## Summary of Deliverables
+
+### Code Changes
+1. **Backend Functions (firebase/api-multitenant.ts):**
+   - `calculateReservationDuration()` helper function
+   - `checkTableAvailability()` function
+   - `assignTableToReservation()` function
+   - Updated `createReservation()` with duration calculation
+   - Updated `updateReservationStatus()` with lifecycle management
+
+2. **Type Definitions (types.ts):**
+   - Extended Reservation interface with 3 new optional fields
+
+3. **Frontend Components:**
+   - ReservationManager: Added "Assigned Table" column and "Assign Table" dropdown
+   - FloorPlanDisplay: Added date/time filtering props and availability checking
+   - ReservationFlow: Integrated date/time passing to FloorPlanDisplay
+
+4. **Firestore:**
+   - Composite index for availability queries
+
+### Test Coverage
+- **Unit Tests:** 18-26 tests covering business logic
+- **Component Tests:** 7-11 tests covering UI interactions
+- **Integration Tests:** 2-4 tests covering double-booking scenarios
+- **E2E Tests:** 1-2 tests covering full user journeys
+- **Total Tests:** Approximately 28-43 tests (within constraint)
+
+### Documentation
+- Implementation notes with technical details
+- Admin guide for manual table assignment
+- Deployment checklist
+
+## Execution Order
+
+**Day 1 (Nov 1):** Group 1 - Data Model & Type Definitions (Tasks 1.1-1.4)
+**Day 2 (Nov 2):** Group 2 - Availability Checking Function (Tasks 2.1-2.4)
+**Day 3 (Nov 3):** Group 3 - Table Assignment Logic (Tasks 3.1-3.6)
+**Day 4 AM (Nov 4):** Group 4 - Admin UI Updates (Tasks 4.1-4.4)
+**Day 4 PM (Nov 4):** Group 5 - Customer UI Updates (Tasks 5.1-5.4)
+**Day 5 (Nov 5):** Group 6 - Integration Testing & Documentation (Tasks 6.1-6.4)
+
+## Risk Mitigation
+
+**Risk 1: Firestore composite index not deployed**
+- Mitigation: Task 2.3 explicitly creates index before code deployment
+- Fallback: Tests will fail if index missing, forcing fix before merge
+
+**Risk 2: Race conditions with simultaneous bookings**
+- Mitigation: Firestore batch writes ensure atomicity (Task 3.2)
+- Testing: Task 6.2 specifically tests concurrent booking scenario
+
+**Risk 3: Performance degradation with availability checks**
+- Mitigation: Composite index ensures queries complete in < 500ms
+- Monitoring: Task 6.4 includes Firestore read count monitoring
+
+**Risk 4: Breaking changes to existing features**
+- Mitigation: All new Reservation fields are optional
+- Testing: Build verification tasks check TypeScript compilation and existing tests
+
+## Success Criteria
+
+- [ ] Zero double-bookings: Two overlapping reservations cannot get same table
+- [ ] Auto-assignment: Confirmed reservations get table within 2 seconds
+- [ ] Admin efficiency: Manual assignment takes < 5 seconds (3 clicks)
+- [ ] Real-time sync: Table status changes visible within 500ms
+- [ ] Backward compatibility: Existing reservations work without migration
+- [ ] Test coverage: 28-43 focused tests all pass
+- [ ] Performance: Availability checks complete in < 500ms
+- [ ] Documentation: Admin guide and implementation notes complete
