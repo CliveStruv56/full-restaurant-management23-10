@@ -13,7 +13,8 @@ import { formatDistance } from 'date-fns';
 import { db } from '../../firebase/config';
 import { collection, addDoc, updateDoc, doc, serverTimestamp } from 'firebase/firestore';
 import toast from 'react-hot-toast';
-import type { Tenant } from '../../types';
+import type { Tenant, VerticalType } from '../../types';
+import { getVerticalConfig } from '../../src/config/verticals';
 
 export const SuperAdminPanel: React.FC = () => {
   const {
@@ -45,7 +46,7 @@ export const SuperAdminPanel: React.FC = () => {
   const [newTenant, setNewTenant] = useState({
     businessName: '',
     subdomain: '',
-    businessType: 'cafe' as 'cafe' | 'restaurant' | 'pub' | 'quick-service',
+    verticalType: 'restaurant' as VerticalType,
     contactEmail: '',
     enabledModules: {
       base: true,
@@ -75,7 +76,7 @@ export const SuperAdminPanel: React.FC = () => {
       const tenantData = {
         businessName: newTenant.businessName,
         subdomain: newTenant.subdomain,
-        businessType: newTenant.businessType,
+        verticalType: newTenant.verticalType,
         contactEmail: newTenant.contactEmail,
         enabledModules: newTenant.enabledModules,
         subscription: {
@@ -109,7 +110,7 @@ export const SuperAdminPanel: React.FC = () => {
       setNewTenant({
         businessName: '',
         subdomain: '',
-        businessType: 'cafe',
+        verticalType: 'restaurant',
         contactEmail: '',
         enabledModules: {
           base: true,
@@ -589,7 +590,7 @@ export const SuperAdminPanel: React.FC = () => {
                                 <div className="space-y-2">
                                   <div className="flex items-center gap-2 text-sm text-gray-600">
                                     <span className="text-gray-400">🏢</span>
-                                    <span className="capitalize">{tenant.businessType.replace('-', ' ')}</span>
+                                    <span>{getVerticalConfig(tenant.verticalType || 'restaurant').name}</span>
                                   </div>
 
                                   <div className="flex items-center gap-2 text-sm text-gray-600">
@@ -731,16 +732,17 @@ export const SuperAdminPanel: React.FC = () => {
               </div>
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="businessType" className="text-gray-700 font-medium">Business Type *</Label>
-              <Select value={newTenant.businessType} onValueChange={(value: any) => setNewTenant({ ...newTenant, businessType: value })}>
+              <Label htmlFor="verticalType" className="text-gray-700 font-medium">Business Type *</Label>
+              <Select value={newTenant.verticalType} onValueChange={(value: VerticalType) => setNewTenant({ ...newTenant, verticalType: value })}>
                 <SelectTrigger className="bg-white border-gray-300 text-gray-900">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="bg-white">
-                  <SelectItem value="cafe" className="text-gray-900">Cafe</SelectItem>
-                  <SelectItem value="restaurant" className="text-gray-900">Restaurant</SelectItem>
-                  <SelectItem value="pub" className="text-gray-900">Pub</SelectItem>
-                  <SelectItem value="quick-service" className="text-gray-900">Quick Service</SelectItem>
+                  <SelectItem value="restaurant" className="text-gray-900">Restaurant & Cafe</SelectItem>
+                  <SelectItem value="auto-shop" className="text-gray-900">Auto Shop & Mechanic</SelectItem>
+                  <SelectItem value="salon" className="text-gray-900">Salon & Spa</SelectItem>
+                  <SelectItem value="hotel" className="text-gray-900">Hotel & Hospitality</SelectItem>
+                  <SelectItem value="retail" className="text-gray-900">Retail Store</SelectItem>
                 </SelectContent>
               </Select>
             </div>
