@@ -1,4 +1,5 @@
 import type { Dispatch, SetStateAction } from 'react';
+import type { VerticalType } from './src/types/vertical.types';
 
 // --- AUTH & USER TYPES ---
 
@@ -254,11 +255,37 @@ export interface TenantUsageMetrics {
   monthlyRevenue?: number; // Calculated MRR based on enabled modules
 }
 
-// UPDATED: Tenant interface with invitation fields
+// NEW: Simple Firestore-based feature flags for gradual rollout
+export interface TenantFeatureFlags {
+  // Vertical features
+  enableNewVerticals?: boolean; // Enable new vertical types for this tenant
+  enableVerticalMigration?: boolean; // Allow changing vertical type
+
+  // Experimental features
+  enableBetaFeatures?: boolean; // Global beta access
+  enableAdvancedAnalytics?: boolean; // Advanced analytics dashboard
+  enableAPIAccess?: boolean; // REST API access
+
+  // Module-specific flags
+  enableFloorPlanV2?: boolean; // New floor plan editor
+  enableAIRecommendations?: boolean; // AI-powered recommendations
+  enableMultiLocation?: boolean; // Multi-location support
+
+  // Can be extended per tenant by super admin
+  [key: string]: boolean | undefined;
+}
+
+// UPDATED: Tenant interface with multi-vertical support
 export interface Tenant {
   id: string;
   businessName: string;
-  businessType: 'cafe' | 'restaurant' | 'pub' | 'quick-service';
+
+  // UPDATED: businessType is now optional/deprecated - use verticalType instead
+  businessType?: 'cafe' | 'restaurant' | 'pub' | 'quick-service'; // DEPRECATED - kept for backward compatibility
+
+  // NEW: Multi-vertical platform support
+  verticalType: VerticalType; // Business vertical type (restaurant, auto-shop, salon, etc.)
+
   subdomain: string;
   customDomain?: string;
   enabledModules: {
@@ -281,6 +308,9 @@ export interface Tenant {
     logo?: string;
     favicon?: string;
   };
+
+  // NEW: Feature flags for gradual rollout and experimentation
+  featureFlags?: TenantFeatureFlags;
 
   // NEW: Invitation rate limiting
   invitationRateLimit?: InvitationRateLimit;
