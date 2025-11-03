@@ -80,17 +80,37 @@ service cloud.firestore {
       );
     }
 
+    /**
+     * Check if user is admin or staff of the specified tenant
+     */
+    function isAdminOrStaff(tenantId) {
+      return isAuthenticated() && (
+        hasRole(tenantId, ['admin', 'staff']) ||
+        (belongsToTenant(tenantId) && isStaffOrAdmin()) // Legacy fallback
+      );
+    }
+
+    /**
+     * Check if user is a super admin (platform-level access)
+     * Super admins can manage all tenants, view all data, and perform system administration
+     */
+    function isSuperAdmin() {
+      return isAuthenticated() &&
+             getUserData().keys().hasAny(['role']) &&
+             getUserData().role == 'super-admin';
+    }
+
     // ============================================================================
     // USER PROFILES
     // ============================================================================
 
     /**
      * Users can read/update their own profile
-     * Admins can manage all users in their tenant
+     * Super admins can read all user profiles for tenant management
      */
     match /users/{userId} {
-      // Read: User can read their own profile
-      allow read: if isAuthenticated() && request.auth.uid == userId;
+      // Read: User can read their own profile, or super admin can read any profile
+      allow read: if (isAuthenticated() && request.auth.uid == userId) || isSuperAdmin();
 
       // Create: User can create their own profile during signup
       // Cloud Functions can create users (bypasses security rules with Admin SDK)
@@ -98,11 +118,13 @@ service cloud.firestore {
                        request.auth.uid == userId &&
                        request.resource.data.keys().hasAny(['tenantId', 'tenantMemberships']);
 
-      // Update: User can update their own profile (except tenantMemberships)
+      // Update: User can update their own profile (except tenantMemberships and role)
+      //         Super admins can update any user (for role changes)
       //         Cloud Functions handle tenantMemberships updates
-      allow update: if isAuthenticated() &&
+      allow update: if (isAuthenticated() &&
                        request.auth.uid == userId &&
-                       !request.resource.data.diff(resource.data).affectedKeys().hasAny(['tenantMemberships', 'createdAt']);
+                       !request.resource.data.diff(resource.data).affectedKeys().hasAny(['tenantMemberships', 'createdAt', 'role'])) ||
+                       isSuperAdmin();
 
       // Delete: Only Cloud Functions can delete users (admin SDK)
       allow delete: if false;
@@ -139,11 +161,52 @@ service cloud.firestore {
     // ============================================================================
 
     /**
-     * Tenant metadata: read by anyone (needed for initial app load), write by admin only
+     * Tenant metadata: read by anyone (needed for initial app load and subdomain availability check)
+     * Write by tenant admin or super admin
+     * Public signup: Anyone can create a new tenant with pending-approval status
      */
     match /tenantMetadata/{tenantId} {
-      allow read: if true; // Public read - needed before authentication
-      allow write: if isTenantAdmin(tenantId);
+      allow read: if true; // Public read - needed before authentication and subdomain check
+
+      // Allow public creation of new tenants with pending-approval status
+      allow create: if request.resource.data.tenantStatus.status == 'pending-approval'
+                    && request.resource.data.keys().hasAll(['businessName', 'subdomain', 'contactEmail'])
+                    && request.resource.data.subdomain is string
+                    && request.resource.data.subdomain.size() >= 3;
+
+      // Allow updates by tenant admin or super admin
+      allow update: if isTenantAdmin(tenantId) || isSuperAdmin();
+
+      // No delete unless super admin
+      allow delete: if isSuperAdmin();
+    }
+
+    // ============================================================================
+    // SUPER ADMIN DATA
+    // ============================================================================
+
+    /**
+     * Super admin data collection - platform-level configuration and analytics
+     * Only accessible by super admins
+     */
+    match /superAdminData/{docId} {
+      allow read, write: if isSuperAdmin();
+    }
+
+    /**
+     * Tenant requests collection - new tenant signup requests
+     * Super admins can read/approve, anyone can create (for signup form)
+     */
+    match /tenantRequests/{requestId} {
+      // Anyone can create a tenant request (signup form)
+      allow create: if request.resource.data.keys().hasAll(['businessName', 'subdomain', 'contactEmail', 'status'])
+                    && request.resource.data.status == 'pending';
+
+      // Super admins can read and update (approve/reject)
+      allow read, update: if isSuperAdmin();
+
+      // No one can delete requests (audit trail)
+      allow delete: if false;
     }
 
     // ============================================================================
@@ -153,13 +216,15 @@ service cloud.firestore {
     match /tenants/{tenantId} {
 
       // Base rule: Authenticated users can read tenant they belong to
-      allow read: if belongsToTenant(tenantId);
+      // Super admins can read all tenant data for monitoring
+      allow read: if belongsToTenant(tenantId) || isSuperAdmin();
 
       // -------------------------
       // SETTINGS
       // -------------------------
       match /settings/{settingId} {
-        allow read: if belongsToTenant(tenantId);
+        // PUBLIC READ: Landing page must be accessible to non-authenticated users
+        allow read: if true;
         allow write: if isTenantAdmin(tenantId);
       }
 
@@ -185,12 +250,15 @@ service cloud.firestore {
       // ORDERS
       // -------------------------
       match /orders/{orderId} {
-        allow read: if belongsToTenant(tenantId);
+        allow read: if belongsToTenant(tenantId) ||
+                       (request.auth != null && resource.data.userId == request.auth.uid);
 
         // Customers can create orders for their tenant
-        allow create: if belongsToTenant(tenantId) &&
+        // UPDATED: Also allow anonymous users (guests) to create orders
+        allow create: if request.auth != null &&
                          request.resource.data.tenantId == tenantId &&
-                         request.resource.data.userId == request.auth.uid;
+                         request.resource.data.userId == request.auth.uid &&
+                         (belongsToTenant(tenantId) || request.auth.token.firebase.sign_in_provider == 'anonymous');
 
         // Staff and admins can update order status
         allow update: if belongsToTenant(tenantId) &&
@@ -210,26 +278,32 @@ service cloud.firestore {
       }
 
       // -------------------------
-      // RESERVATIONS (Phase 2)
+      // RESERVATIONS (Customer Flow Redesign - Phase 3)
       // -------------------------
       match /reservations/{reservationId} {
-        allow read: if belongsToTenant(tenantId);
+        // PUBLIC CREATE: Anyone can create a reservation (guest checkout)
+        // Validation ensures required fields are present
+        allow create: if request.resource.data.tenantId == tenantId
+                      && request.resource.data.status == 'pending'
+                      && request.resource.data.date is string
+                      && request.resource.data.time is string
+                      && request.resource.data.partySize is int
+                      && request.resource.data.partySize >= 1
+                      && request.resource.data.partySize <= 20
+                      && request.resource.data.contactName is string
+                      && request.resource.data.contactPhone is string
+                      && request.resource.data.contactEmail is string;
 
-        // Create: Any authenticated user in tenant can create reservations
-        allow create: if belongsToTenant(tenantId) &&
-                         request.resource.data.tenantId == tenantId &&
-                         request.resource.data.keys().hasAll(['tenantId', 'customerId', 'customerName', 'customerEmail', 'partySize', 'dateTime', 'status']);
+        // READ: Admin/staff can read all reservations for their tenant
+        allow read: if isAdminOrStaff(tenantId);
 
-        // Update: Staff/admin can update any reservation
-        //         Customers can update their own reservations
-        allow update: if belongsToTenant(tenantId) && (
-                          hasRole(tenantId, ['admin', 'staff']) ||
-                          request.auth.uid == resource.data.customerId
-                        );
+        // UPDATE: Admin/staff can update reservation status and notes
+        // Tenant ID cannot be changed
+        allow update: if isAdminOrStaff(tenantId)
+                      && request.resource.data.tenantId == resource.data.tenantId;
 
-        // Delete: Only staff/admin can delete reservations
-        allow delete: if belongsToTenant(tenantId) &&
-                         hasRole(tenantId, ['admin', 'staff']);
+        // DELETE: Only admin can delete reservations
+        allow delete: if isTenantAdmin(tenantId);
       }
 
       // -------------------------

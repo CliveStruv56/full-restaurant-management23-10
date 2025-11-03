@@ -75,7 +75,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, catego
     };
 
     const handleExport = () => {
-        const headers = ['id', 'name', 'categoryId', 'price', 'description', 'imageUrl', 'availableOptionNames'];
+        const headers = ['id', 'name', 'categoryId', 'price', 'description', 'imageUrl', 'availableOptionNames', 'availableFor'];
         const csvRows = [headers.join(',')];
 
         for (const product of products) {

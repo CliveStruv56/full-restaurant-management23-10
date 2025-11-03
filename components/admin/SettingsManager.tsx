@@ -13,7 +13,7 @@ const ToggleSwitch = ({ isChecked, onChange }: { isChecked: boolean, onChange: (
         ...styles.settingsToggleSlider,
         backgroundColor: isChecked ? '#2ecc71' : '#ccc',
     };
-    
+
     const sliderBeforeStyle: React.CSSProperties = {
         position: 'absolute',
         content: '""',
@@ -43,6 +43,7 @@ export const SettingsManager: React.FC<SettingsManagerProps> = ({ settings }) =>
     const [formData, setFormData] = useState(settings);
     const [showSuccess, setShowSuccess] = useState(false);
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+    const [showDisableWarning, setShowDisableWarning] = useState(false);
 
     const currencySymbols = { USD: '$', GBP: '£', EUR: '€' };
 
@@ -82,7 +83,7 @@ export const SettingsManager: React.FC<SettingsManagerProps> = ({ settings }) =>
             }
         }));
     };
-    
+
     const handleGlobalChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value, type } = e.target;
         if (type === 'checkbox') {
@@ -96,6 +97,36 @@ export const SettingsManager: React.FC<SettingsManagerProps> = ({ settings }) =>
                 setFormData(prev => ({ ...prev, [name]: value as any }));
             }
         }
+    };
+
+    const handleFloorPlanToggle = (enabled: boolean) => {
+        if (!enabled && formData.floorPlanEnabled) {
+            // Show warning when disabling
+            setShowDisableWarning(true);
+        } else {
+            setFormData(prev => ({ ...prev, floorPlanEnabled: enabled }));
+        }
+    };
+
+    const confirmDisableFloorPlan = () => {
+        setFormData(prev => ({ ...prev, floorPlanEnabled: false }));
+        setShowDisableWarning(false);
+    };
+
+    const handleCanvasSizeChange = (size: 'small' | 'medium' | 'large') => {
+        const dimensions = {
+            small: { width: 600, height: 400 },
+            medium: { width: 800, height: 600 },
+            large: { width: 1200, height: 800 },
+        };
+        setFormData(prev => ({ ...prev, floorPlanCanvas: dimensions[size] }));
+    };
+
+    const getCurrentCanvasSize = (): 'small' | 'medium' | 'large' => {
+        const canvas = formData.floorPlanCanvas || { width: 800, height: 600 };
+        if (canvas.width === 600 && canvas.height === 400) return 'small';
+        if (canvas.width === 1200 && canvas.height === 800) return 'large';
+        return 'medium';
     };
 
     const handleSubmit = async (e?: React.FormEvent) => {
@@ -127,7 +158,38 @@ export const SettingsManager: React.FC<SettingsManagerProps> = ({ settings }) =>
                         </select>
                     </div>
                 </div>
-                
+
+                <div style={styles.adminFormCard}>
+                    <h3 style={styles.adminModalTitle}>Visual Floor Plan Module</h3>
+                    <p style={styles.settingsHelperText}>Enable visual table arrangement with drag-and-drop floor plan builder. Table positions will be preserved when disabled.</p>
+                    <div style={{...styles.adminFormGroup, ...styles.settingsMasterToggle, paddingTop: 0, borderTop: 'none', marginTop: 0, marginBottom: '20px'}}>
+                        <div style={styles.settingsToggle}>
+                            <span style={styles.settingsToggleLabel}>Floor Plan Disabled</span>
+                            <ToggleSwitch
+                                isChecked={formData.floorPlanEnabled ?? false}
+                                onChange={(e) => handleFloorPlanToggle(e.target.checked)}
+                            />
+                            <span style={styles.settingsToggleLabel}>Floor Plan Enabled</span>
+                        </div>
+                    </div>
+                    <div style={{...styles.adminFormGroupGrid, opacity: formData.floorPlanEnabled ? 1 : 0.5}}>
+                        <div style={styles.adminFormGroup}>
+                            <label style={styles.adminLabel} htmlFor="canvasSize">Canvas Size</label>
+                            <select
+                                style={styles.adminFormInput}
+                                id="canvasSize"
+                                value={getCurrentCanvasSize()}
+                                onChange={(e) => handleCanvasSizeChange(e.target.value as 'small' | 'medium' | 'large')}
+                                disabled={!formData.floorPlanEnabled}
+                            >
+                                <option value="small">Small (600 x 400)</option>
+                                <option value="medium">Medium (800 x 600)</option>
+                                <option value="large">Large (1200 x 800)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
                 <div style={styles.adminFormCard}>
                     <h3 style={styles.adminModalTitle}>Loyalty Program</h3>
                      <div style={{...styles.adminFormGroup, ...styles.settingsMasterToggle, paddingTop: 0, borderTop: 'none', marginTop: 0, marginBottom: '20px'}}>
@@ -185,7 +247,7 @@ export const SettingsManager: React.FC<SettingsManagerProps> = ({ settings }) =>
                             </tbody>
                         </table>
                     </div>
-                    
+
                     <div style={{...styles.adminFormGroup, ...styles.settingsMasterToggle}}>
                         <div style={styles.settingsToggle}>
                              <span style={styles.settingsToggleLabel}>Store Closed</span>
@@ -231,6 +293,33 @@ export const SettingsManager: React.FC<SettingsManagerProps> = ({ settings }) =>
                     {showSuccess && <span style={styles.success}>Settings saved!</span>}
                 </div>
             </form>
+
+            {/* Warning Modal for Disabling Floor Plan */}
+            {showDisableWarning && (
+                <div style={styles.adminModalOverlay}>
+                    <div style={{...styles.adminModalContent, maxWidth: '500px'}}>
+                        <h3 style={styles.adminModalTitle}>Disable Floor Plan Module?</h3>
+                        <p style={{marginBottom: '20px', fontSize: '16px', lineHeight: '1.6'}}>
+                            The floor plan will be hidden from customers and the admin table management view.
+                            Table positions will be preserved and can be restored when you re-enable this module.
+                        </p>
+                        <div style={{display: 'flex', gap: '10px', justifyContent: 'flex-end'}}>
+                            <button
+                                onClick={() => setShowDisableWarning(false)}
+                                style={{...styles.adminButtonSecondary, padding: '10px 20px'}}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={confirmDisableFloorPlan}
+                                style={{...styles.adminButtonPrimary, padding: '10px 20px', backgroundColor: '#dc3545'}}
+                            >
+                                Disable Floor Plan
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Floating Save Button */}
             {hasUnsavedChanges && (

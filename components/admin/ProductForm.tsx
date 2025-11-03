@@ -12,7 +12,8 @@ const emptyProduct: Omit<Product, 'id'> = {
     price: 0,
     description: '',
     imageUrl: '',
-    availableOptionNames: []
+    availableOptionNames: [],
+    availableFor: 'both' // Default: available for all order types
 };
 
 export const ProductForm: React.FC<ProductFormProps> = ({ product, categories, onSave, onClose }) => {
@@ -223,6 +224,50 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, categories, o
                             </div>
                         </div>
                     )}
+                    <div style={styles.adminFormGroup}>
+                        <label style={styles.adminLabel}>Order Type Availability</label>
+                        <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                                <input
+                                    type="radio"
+                                    name="availableFor"
+                                    value="both"
+                                    checked={formData.availableFor === 'both' || !formData.availableFor}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, availableFor: 'both' }))}
+                                    disabled={isSaving}
+                                    style={{ cursor: 'pointer' }}
+                                />
+                                <span style={{ fontSize: '14px' }}>Both (Dine-In & Takeaway)</span>
+                            </label>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                                <input
+                                    type="radio"
+                                    name="availableFor"
+                                    value="dine-in"
+                                    checked={formData.availableFor === 'dine-in'}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, availableFor: 'dine-in' }))}
+                                    disabled={isSaving}
+                                    style={{ cursor: 'pointer' }}
+                                />
+                                <span style={{ fontSize: '14px' }}>🍽️ Dine-In Only</span>
+                            </label>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                                <input
+                                    type="radio"
+                                    name="availableFor"
+                                    value="takeaway"
+                                    checked={formData.availableFor === 'takeaway'}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, availableFor: 'takeaway' }))}
+                                    disabled={isSaving}
+                                    style={{ cursor: 'pointer' }}
+                                />
+                                <span style={{ fontSize: '14px' }}>📦 Takeaway Only</span>
+                            </label>
+                        </div>
+                        <p style={{ fontSize: '12px', color: '#666', marginTop: '8px', marginBottom: 0 }}>
+                            Control which order types can see this product in the menu.
+                        </p>
+                    </div>
                     <div style={styles.adminFormGroup}>
                         <label style={styles.adminLabel} htmlFor="price">Base Price</label>
                         <input style={styles.adminFormInput} type="number" name="price" id="price" value={formData.price} onChange={handleChange} required step="0.01" />

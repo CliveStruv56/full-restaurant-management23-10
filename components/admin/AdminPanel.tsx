@@ -1,15 +1,19 @@
 import React from 'react';
-import { Order, Product, Category, AppSettings } from '../../types';
+import { Order, Product, Category, AppSettings, Table } from '../../types';
 import { styles } from '../../styles';
 import { ProductManager } from './ProductManager';
 import { SettingsManager } from './SettingsManager';
 import { OrderManager } from './OrderManager';
 import { CategoryManager } from './CategoryManager';
 import { InvitationManager } from './InvitationManager';
+import { LandingPageSettings } from './LandingPageSettings';
+import { QRCodeManager } from './QRCodeManager';
+import { ReservationManager } from './ReservationManager';
+import { TableManager } from './TableManager';
 import { DashboardIcon, ProductsIcon, OrdersIcon, SettingsIcon, CategoryIcon, KitchenIcon } from '../Icons';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTenant } from '../../contexts/TenantContext';
-import { streamCategories, streamOrders, streamProducts, streamSettings } from '../../firebase/api-multitenant';
+import { streamCategories, streamOrders, streamProducts, streamSettings, streamTables } from '../../firebase/api-multitenant';
 
 interface AdminPanelProps {
     activePage: string;
@@ -23,6 +27,50 @@ const TeamIcon = () => (
         <circle cx="9" cy="7" r="4"></circle>
         <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
         <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+    </svg>
+);
+
+// Landing Page Icon component
+const LandingPageIcon = () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+        <line x1="8" y1="21" x2="16" y2="21"></line>
+        <line x1="12" y1="17" x2="12" y2="21"></line>
+    </svg>
+);
+
+// QR Code Icon component
+const QRCodeIcon = () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <rect x="3" y="3" width="7" height="7"></rect>
+        <rect x="14" y="3" width="7" height="7"></rect>
+        <rect x="3" y="14" width="7" height="7"></rect>
+        <rect x="14" y="14" width="7" height="7"></rect>
+        <rect x="5" y="5" width="3" height="3" fill="currentColor"></rect>
+        <rect x="16" y="5" width="3" height="3" fill="currentColor"></rect>
+        <rect x="5" y="16" width="3" height="3" fill="currentColor"></rect>
+        <rect x="16" y="16" width="3" height="3" fill="currentColor"></rect>
+    </svg>
+);
+
+// Reservation/Calendar Icon component
+const ReservationIcon = () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+        <line x1="16" y1="2" x2="16" y2="6"></line>
+        <line x1="8" y1="2" x2="8" y2="6"></line>
+        <line x1="3" y1="10" x2="21" y2="10"></line>
+    </svg>
+);
+
+// Table Icon component
+const TableIcon = () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <rect x="3" y="8" width="18" height="12" rx="1" ry="1"></rect>
+        <line x1="3" y1="8" x2="21" y2="8"></line>
+        <path d="M6 8 V 4 M18 8 V 4"></path>
+        <circle cx="6" cy="4" r="1" fill="currentColor"></circle>
+        <circle cx="18" cy="4" r="1" fill="currentColor"></circle>
     </svg>
 );
 
@@ -60,6 +108,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ activePage, setActivePag
     const [categories, setCategories] = React.useState<Category[]>([]);
     const [settings, setSettings] = React.useState<AppSettings | null>(null);
     const [orders, setOrders] = React.useState<Order[]>([]);
+    const [tables, setTables] = React.useState<Table[]>([]);
     const [loading, setLoading] = React.useState(true);
 
     React.useEffect(() => {
@@ -67,6 +116,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ activePage, setActivePag
         const unsubProducts = streamProducts(tenantId, setProducts);
         const unsubCategories = streamCategories(tenantId, setCategories);
         const unsubOrders = streamOrders(tenantId, setOrders);
+        const unsubTables = streamTables(tenantId, setTables);
         const unsubSettings = streamSettings(tenantId, (settingsData) => {
             setSettings(settingsData);
             setLoading(false);
@@ -76,6 +126,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ activePage, setActivePag
             unsubProducts();
             unsubCategories();
             unsubOrders();
+            unsubTables();
             unsubSettings();
         };
     }, [tenantId]);
@@ -96,6 +147,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ activePage, setActivePag
                 return <InvitationManager />;
             case 'settings':
                  return <SettingsManager settings={settings} />;
+            case 'landing-page':
+                return <LandingPageSettings settings={settings} />;
+            case 'qr-codes':
+                return <QRCodeManager settings={settings} tables={tables} />;
+            case 'reservations':
+                return <ReservationManager />;
+            case 'tables':
+                return <TableManager tables={tables} />;
             default:
                 return (
                     <div>
@@ -133,6 +192,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ activePage, setActivePag
                 <nav style={styles.adminSidebarNav}>
                     <SidebarButton page="dashboard" label="Dashboard" icon={<DashboardIcon />} activePage={activePage} setActivePage={setActivePage} />
                     <SidebarButton page="kitchen" label="Kitchen View" icon={<KitchenIcon />} activePage={activePage} setActivePage={setActivePage} />
+                    <SidebarButton page="landing-page" label="Landing Page" icon={<LandingPageIcon />} activePage={activePage} setActivePage={setActivePage} />
+                    <SidebarButton page="qr-codes" label="QR Codes" icon={<QRCodeIcon />} activePage={activePage} setActivePage={setActivePage} />
+                    <SidebarButton page="reservations" label="Reservations" icon={<ReservationIcon />} activePage={activePage} setActivePage={setActivePage} />
+                    <SidebarButton page="tables" label="Tables" icon={<TableIcon />} activePage={activePage} setActivePage={setActivePage} />
                     <SidebarButton page="categories" label="Categories" icon={<CategoryIcon />} activePage={activePage} setActivePage={setActivePage} />
                     <SidebarButton page="products" label="Products" icon={<ProductsIcon />} activePage={activePage} setActivePage={setActivePage} />
                     <SidebarButton page="orders" label="Orders" icon={<OrdersIcon />} activePage={activePage} setActivePage={setActivePage} />

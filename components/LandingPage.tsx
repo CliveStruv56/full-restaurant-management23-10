@@ -3,6 +3,8 @@ import { useTenant } from '../contexts/TenantContext';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { AppSettings } from '../types';
+import { Card, CardContent } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface LandingPageProps {
     onOrderNow: (type: 'takeaway' | 'dine-in') => void;
@@ -74,15 +76,17 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOrderNow, onMakeRese
     // Loading skeleton
     if (loading) {
         return (
-            <div style={styles.container}>
-                <div style={styles.skeletonHero}>
-                    <div style={styles.skeletonLogo} />
-                    <div style={styles.skeletonText} />
-                    <div style={{ ...styles.skeletonText, width: '60%' }} />
+            <div className="min-h-screen flex flex-col bg-gray-50">
+                <div className="min-h-[35vh] flex items-center justify-center p-4 bg-gradient-to-br from-blue-500 to-blue-600">
+                    <div className="max-w-3xl w-full flex flex-col items-center gap-5">
+                        <Skeleton className="w-48 h-20 rounded-lg" />
+                        <Skeleton className="w-3/4 h-10 rounded-lg" />
+                        <Skeleton className="w-2/3 h-10 rounded-lg" />
+                    </div>
                 </div>
-                <div style={styles.infoSection}>
+                <div className="grid grid-cols-1 gap-4 p-5 max-w-6xl mx-auto w-full">
                     {[1, 2, 3].map(i => (
-                        <div key={i} style={styles.skeletonCard} />
+                        <Skeleton key={i} className="h-32 rounded-xl" />
                     ))}
                 </div>
             </div>
@@ -101,375 +105,148 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOrderNow, onMakeRese
     const businessName = tenant?.businessName || 'Our Restaurant';
 
     return (
-        <div style={styles.container}>
+        <div className="min-h-screen flex flex-col bg-gray-50">
             {/* Hero Section */}
             <section
+                className="relative min-h-[35vh] flex items-center justify-center p-4 text-white text-center bg-cover bg-center"
                 style={{
-                    ...styles.heroSection,
                     backgroundColor: primaryColor,
                     backgroundImage: heroImageUrl ? `url(${heroImageUrl})` : undefined,
-                    backgroundSize: 'cover',
-                    backgroundPosition: 'center',
                 }}
             >
                 {/* Overlay for better text readability when hero image is present */}
-                {heroImageUrl && <div style={styles.heroOverlay} />}
+                {heroImageUrl && <div className="absolute inset-0 bg-black/50 z-[1]" />}
 
-                <div style={styles.heroContent}>
+                <div className="relative z-[2] max-w-3xl w-full">
                     {/* Logo */}
                     {logoUrl && (
                         <img
                             src={logoUrl}
                             alt={`${businessName} logo`}
-                            style={styles.logo}
+                            className="max-h-16 md:max-h-24 max-w-[90%] object-contain mx-auto mb-3 drop-shadow-lg"
                             loading="lazy"
                         />
                     )}
 
                     {/* Business Name */}
-                    <h1 style={styles.heroTitle}>
+                    <h1 className="text-3xl md:text-5xl lg:text-6xl font-bold mb-3 drop-shadow-md">
                         {businessName}
                     </h1>
 
                     {/* Tagline */}
                     {tagline && (
-                        <p style={styles.tagline}>{tagline}</p>
+                        <p className="text-lg md:text-2xl lg:text-3xl drop-shadow-md">{tagline}</p>
                     )}
                 </div>
             </section>
 
             {/* Info Section */}
-            <section style={styles.infoSection}>
+            <section className="grid grid-cols-1 md:grid-cols-3 gap-5 p-5 max-w-6xl mx-auto w-full">
                 {/* Operating Hours Card */}
-                <div style={styles.infoCard}>
-                    <div style={styles.infoIcon}>🕐</div>
-                    <h3 style={styles.infoLabel}>Hours</h3>
-                    <p style={styles.infoValue}>{formatOperatingHours()}</p>
-                </div>
+                <Card className="hover:shadow-lg transition-shadow">
+                    <CardContent className="text-center p-6">
+                        <div className="text-4xl mb-2">🕐</div>
+                        <h3 className="text-xl font-semibold text-gray-800 mb-2">Hours</h3>
+                        <p className="text-base text-gray-600 leading-relaxed">{formatOperatingHours()}</p>
+                    </CardContent>
+                </Card>
 
                 {/* Location Card */}
                 {address && (
-                    <div style={styles.infoCard}>
-                        <div style={styles.infoIcon}>📍</div>
-                        <h3 style={styles.infoLabel}>Location</h3>
-                        <p style={styles.infoValue}>{address}</p>
-                    </div>
+                    <Card className="hover:shadow-lg transition-shadow">
+                        <CardContent className="text-center p-6">
+                            <div className="text-4xl mb-2">📍</div>
+                            <h3 className="text-xl font-semibold text-gray-800 mb-2">Location</h3>
+                            <p className="text-base text-gray-600 leading-relaxed">{address}</p>
+                        </CardContent>
+                    </Card>
                 )}
 
                 {/* Contact Card */}
                 {(phone || email) && (
-                    <div style={styles.infoCard}>
-                        <div style={styles.infoIcon}>📞</div>
-                        <h3 style={styles.infoLabel}>Contact</h3>
-                        <div style={styles.infoValue}>
-                            {phone && <div>{phone}</div>}
-                            {email && <div>{email}</div>}
-                        </div>
-                    </div>
+                    <Card className="hover:shadow-lg transition-shadow">
+                        <CardContent className="text-center p-6">
+                            <div className="text-4xl mb-2">📞</div>
+                            <h3 className="text-xl font-semibold text-gray-800 mb-2">Contact</h3>
+                            <div className="text-base text-gray-600 leading-relaxed">
+                                {phone && <div>{phone}</div>}
+                                {email && <div>{email}</div>}
+                            </div>
+                        </CardContent>
+                    </Card>
                 )}
             </section>
 
             {/* Action Options */}
-            <section style={styles.actionsSection}>
-                <h2 style={styles.actionsTitle}>How would you like to proceed?</h2>
-                <div style={styles.actionsGrid}>
+            <section className="p-5 pb-10 max-w-6xl mx-auto w-full">
+                <h2 className="text-2xl md:text-3xl font-bold text-center text-gray-800 mb-6">
+                    How would you like to proceed?
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                     {/* Takeaway Card */}
-                    <button
-                        style={styles.actionCard}
+                    <Card
+                        className="cursor-pointer transition-all hover:shadow-xl hover:-translate-y-2"
                         onClick={() => onOrderNow('takeaway')}
-                        onMouseEnter={(e) => {
-                            e.currentTarget.style.transform = 'translateY(-8px)';
-                            e.currentTarget.style.boxShadow = `0 12px 24px ${primaryColor}33`;
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.transform = 'translateY(0)';
-                            e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
-                        }}
                     >
-                        <div style={{ ...styles.actionIcon, backgroundColor: `${primaryColor}15` }}>
-                            <span style={{ fontSize: '36px' }}>🛍️</span>
-                        </div>
-                        <h3 style={{ ...styles.actionTitle, color: primaryColor }}>Order Takeaway</h3>
-                        <p style={styles.actionDescription}>
-                            Order now and pick up later. Perfect for on-the-go.
-                        </p>
-                    </button>
+                        <CardContent className="flex flex-col items-center text-center gap-3 p-6 min-h-[200px]">
+                            <div
+                                className="w-16 h-16 rounded-full flex items-center justify-center"
+                                style={{ backgroundColor: `${primaryColor}15` }}
+                            >
+                                <span className="text-4xl">🛍️</span>
+                            </div>
+                            <h3 className="text-xl font-bold" style={{ color: primaryColor }}>
+                                Order Takeaway
+                            </h3>
+                            <p className="text-sm text-gray-600 leading-relaxed">
+                                Order now and pick up later. Perfect for on-the-go.
+                            </p>
+                        </CardContent>
+                    </Card>
 
                     {/* Dine-In Card */}
-                    <button
-                        style={styles.actionCard}
+                    <Card
+                        className="cursor-pointer transition-all hover:shadow-xl hover:-translate-y-2"
                         onClick={() => onOrderNow('dine-in')}
-                        onMouseEnter={(e) => {
-                            e.currentTarget.style.transform = 'translateY(-8px)';
-                            e.currentTarget.style.boxShadow = `0 12px 24px ${primaryColor}33`;
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.transform = 'translateY(0)';
-                            e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
-                        }}
                     >
-                        <div style={{ ...styles.actionIcon, backgroundColor: `${primaryColor}15` }}>
-                            <span style={{ fontSize: '36px' }}>🍽️</span>
-                        </div>
-                        <h3 style={{ ...styles.actionTitle, color: primaryColor }}>Dine In</h3>
-                        <p style={styles.actionDescription}>
-                            Order for dining in. Select your table and we'll serve you.
-                        </p>
-                    </button>
+                        <CardContent className="flex flex-col items-center text-center gap-3 p-6 min-h-[200px]">
+                            <div
+                                className="w-16 h-16 rounded-full flex items-center justify-center"
+                                style={{ backgroundColor: `${primaryColor}15` }}
+                            >
+                                <span className="text-4xl">🍽️</span>
+                            </div>
+                            <h3 className="text-xl font-bold" style={{ color: primaryColor }}>
+                                Dine In
+                            </h3>
+                            <p className="text-sm text-gray-600 leading-relaxed">
+                                Order for dining in. Select your table and we'll serve you.
+                            </p>
+                        </CardContent>
+                    </Card>
 
                     {/* Reservation Card */}
-                    <button
-                        style={styles.actionCard}
+                    <Card
+                        className="cursor-pointer transition-all hover:shadow-xl hover:-translate-y-2"
                         onClick={onMakeReservation}
-                        onMouseEnter={(e) => {
-                            e.currentTarget.style.transform = 'translateY(-8px)';
-                            e.currentTarget.style.boxShadow = `0 12px 24px ${primaryColor}33`;
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.transform = 'translateY(0)';
-                            e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
-                        }}
                     >
-                        <div style={{ ...styles.actionIcon, backgroundColor: `${primaryColor}15` }}>
-                            <span style={{ fontSize: '36px' }}>📅</span>
-                        </div>
-                        <h3 style={{ ...styles.actionTitle, color: primaryColor }}>Make a Reservation</h3>
-                        <p style={styles.actionDescription}>
-                            Reserve a table for a future date and time.
-                        </p>
-                    </button>
+                        <CardContent className="flex flex-col items-center text-center gap-3 p-6 min-h-[200px]">
+                            <div
+                                className="w-16 h-16 rounded-full flex items-center justify-center"
+                                style={{ backgroundColor: `${primaryColor}15` }}
+                            >
+                                <span className="text-4xl">📅</span>
+                            </div>
+                            <h3 className="text-xl font-bold" style={{ color: primaryColor }}>
+                                Make a Reservation
+                            </h3>
+                            <p className="text-sm text-gray-600 leading-relaxed">
+                                Reserve a table for a future date and time.
+                            </p>
+                        </CardContent>
+                    </Card>
                 </div>
             </section>
         </div>
     );
 };
-
-// Styles
-const styles: { [key: string]: React.CSSProperties } = {
-    container: {
-        minHeight: '100vh',
-        display: 'flex',
-        flexDirection: 'column',
-        backgroundColor: '#f8f9fa',
-    },
-
-    // Hero Section
-    heroSection: {
-        position: 'relative',
-        minHeight: '35vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '16px',
-        color: 'white',
-        textAlign: 'center',
-    },
-    heroOverlay: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-        zIndex: 1,
-    },
-    heroContent: {
-        position: 'relative',
-        zIndex: 2,
-        maxWidth: '800px',
-        width: '100%',
-    },
-    logo: {
-        maxHeight: '60px',
-        maxWidth: '90%',
-        objectFit: 'contain',
-        marginBottom: '12px',
-        filter: 'drop-shadow(0 4px 6px rgba(0,0,0,0.3))',
-    },
-    heroTitle: {
-        fontSize: '28px',
-        fontWeight: 700,
-        marginBottom: '12px',
-        textShadow: '0 2px 4px rgba(0,0,0,0.3)',
-    },
-    tagline: {
-        fontSize: '18px',
-        fontWeight: 400,
-        margin: 0,
-        textShadow: '0 2px 4px rgba(0,0,0,0.3)',
-        lineHeight: 1.4,
-    },
-
-    // Info Section
-    infoSection: {
-        display: 'grid',
-        gridTemplateColumns: '1fr',
-        gap: '16px',
-        padding: '20px',
-        maxWidth: '1200px',
-        margin: '0 auto',
-        width: '100%',
-    },
-    infoCard: {
-        backgroundColor: 'white',
-        borderRadius: '12px',
-        padding: '20px',
-        textAlign: 'center',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-        transition: 'transform 0.2s ease, box-shadow 0.2s ease',
-    },
-    infoIcon: {
-        fontSize: '36px',
-        marginBottom: '8px',
-    },
-    infoLabel: {
-        fontSize: '20px',
-        fontWeight: 600,
-        color: '#333',
-        marginBottom: '8px',
-    },
-    infoValue: {
-        fontSize: '16px',
-        color: '#6c757d',
-        lineHeight: 1.6,
-        margin: 0,
-    },
-
-    // Actions Section
-    actionsSection: {
-        padding: '20px 20px 40px',
-        maxWidth: '1200px',
-        margin: '0 auto',
-        width: '100%',
-    },
-    actionsTitle: {
-        fontSize: '22px',
-        fontWeight: 700,
-        textAlign: 'center',
-        color: '#333',
-        marginBottom: '24px',
-    },
-    actionsGrid: {
-        display: 'grid',
-        gridTemplateColumns: '1fr',
-        gap: '16px',
-        '@media (minWidth: 768px)': {
-            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-        },
-    },
-    actionCard: {
-        backgroundColor: 'white',
-        border: 'none',
-        borderRadius: '16px',
-        padding: '20px 16px',
-        textAlign: 'center',
-        cursor: 'pointer',
-        boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-        transition: 'all 0.3s ease',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        gap: '12px',
-        minHeight: '180px',
-    },
-    actionIcon: {
-        width: '64px',
-        height: '64px',
-        borderRadius: '50%',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: '4px',
-    },
-    actionTitle: {
-        fontSize: '18px',
-        fontWeight: 700,
-        margin: 0,
-    },
-    actionDescription: {
-        fontSize: '14px',
-        color: '#6c757d',
-        lineHeight: 1.5,
-        margin: 0,
-    },
-
-    // Loading Skeleton
-    skeletonHero: {
-        minHeight: '100vh',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '20px',
-        gap: '20px',
-    },
-    skeletonLogo: {
-        width: '200px',
-        height: '80px',
-        backgroundColor: '#e0e0e0',
-        borderRadius: '8px',
-        animation: 'pulse 1.5s ease-in-out infinite',
-    },
-    skeletonText: {
-        width: '80%',
-        height: '40px',
-        backgroundColor: '#e0e0e0',
-        borderRadius: '8px',
-        animation: 'pulse 1.5s ease-in-out infinite',
-    },
-    skeletonCard: {
-        height: '200px',
-        backgroundColor: '#e0e0e0',
-        borderRadius: '12px',
-        animation: 'pulse 1.5s ease-in-out infinite',
-    },
-};
-
-// Inject keyframe animation for skeleton
-if (typeof document !== 'undefined') {
-    const styleSheet = document.createElement('style');
-    styleSheet.textContent = `
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
-
-        @media (min-width: 768px) {
-            /* Tablet breakpoint */
-            .landing-page-hero-title {
-                font-size: 48px !important;
-            }
-            .landing-page-tagline {
-                font-size: 28px !important;
-            }
-            .landing-page-logo {
-                max-height: 100px !important;
-            }
-            .landing-page-info-section {
-                grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)) !important;
-            }
-        }
-
-        @media (min-width: 1024px) {
-            /* Desktop breakpoint */
-            .landing-page-hero-title {
-                font-size: 56px !important;
-            }
-            .landing-page-tagline {
-                font-size: 32px !important;
-            }
-            .landing-page-logo {
-                max-height: 120px !important;
-            }
-            .landing-page-hero {
-                min-height: auto !important;
-                padding: 80px 40px !important;
-            }
-            .landing-page-info-section {
-                grid-template-columns: repeat(3, 1fr) !important;
-                padding: 60px 40px !important;
-            }
-        }
-    `;
-    document.head.appendChild(styleSheet);
-}

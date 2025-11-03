@@ -1,8 +1,10 @@
-import React, { useState, CSSProperties } from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Product, AppSettings } from '../types';
 import { formatCurrency } from '../utils';
-import { colors, shadows, borderRadius, transitions, spacing } from '../theme';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface ProductCardProps {
     product: Product;
@@ -12,159 +14,67 @@ interface ProductCardProps {
 
 export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, settings }) => {
     const [imageLoaded, setImageLoaded] = useState(false);
-
-    const cardStyle: CSSProperties = {
-        backgroundColor: colors.background.secondary,
-        borderRadius: borderRadius.xl,
-        overflow: 'hidden',
-        boxShadow: shadows.elevated,
-        display: 'flex',
-        flexDirection: 'column',
-        transition: transitions.all,
-        cursor: 'pointer',
-        position: 'relative',
-    };
-
-    const imageContainerStyle: CSSProperties = {
-        width: '100%',
-        height: '160px',
-        position: 'relative',
-        overflow: 'hidden',
-        backgroundColor: colors.gray[100],
-    };
-
-    const imageStyle: CSSProperties = {
-        width: '100%',
-        height: '100%',
-        objectFit: 'cover',
-        transition: transitions.transform,
-        opacity: imageLoaded ? 1 : 0,
-        transform: imageLoaded ? 'scale(1)' : 'scale(1.05)',
-    };
-
-    const contentStyle: CSSProperties = {
-        padding: spacing[4],
-        flexGrow: 1,
-        display: 'flex',
-        flexDirection: 'column',
-        gap: spacing[2],
-    };
-
-    const nameStyle: CSSProperties = {
-        margin: 0,
-        fontSize: '0.95rem',
-        fontWeight: 600,
-        color: colors.text.primary,
-        lineHeight: 1.3,
-        flexGrow: 1,
-        minHeight: '40px',
-        display: '-webkit-box',
-        WebkitLineClamp: 2,
-        WebkitBoxOrient: 'vertical',
-        overflow: 'hidden',
-    };
-
-    const priceStyle: CSSProperties = {
-        margin: 0,
-        fontSize: '1.1rem',
-        fontWeight: 700,
-        color: colors.primary[600],
-        letterSpacing: '-0.02em',
-    };
-
-    const buttonStyle: CSSProperties = {
-        padding: `${spacing[2]} ${spacing[3]}`,
-        border: 'none',
-        borderRadius: borderRadius.lg,
-        backgroundColor: colors.primary[600],
-        color: colors.text.inverse,
-        fontSize: '0.875rem',
-        fontWeight: 600,
-        cursor: 'pointer',
-        transition: transitions.colors,
-        boxShadow: shadows.sm,
-        width: '100%',
-    };
-
-    const buttonHoverStyle: CSSProperties = {
-        backgroundColor: colors.primary[700],
-        boxShadow: shadows.md,
-        transform: 'translateY(-1px)',
-    };
-
     const [isHovered, setIsHovered] = useState(false);
-    const [isButtonHovered, setIsButtonHovered] = useState(false);
 
     return (
         <motion.div
-            style={{
-                ...cardStyle,
-                ...(isHovered ? { boxShadow: shadows.elevatedHover, transform: 'translateY(-4px)' } : {}),
-            }}
-            onHoverStart={() => setIsHovered(true)}
-            onHoverEnd={() => setIsHovered(false)}
-            whileTap={{ scale: 0.98 }}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3 }}
+            whileTap={{ scale: 0.98 }}
+            onHoverStart={() => setIsHovered(true)}
+            onHoverEnd={() => setIsHovered(false)}
         >
-            <div style={imageContainerStyle}>
-                <img
-                    src={product.imageUrl}
-                    alt={product.name}
-                    style={imageStyle}
-                    onLoad={() => setImageLoaded(true)}
-                    loading="lazy"
-                />
-                {!imageLoaded && (
-                    <div style={{
-                        position: 'absolute',
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        backgroundColor: colors.gray[100],
-                        backgroundImage: 'linear-gradient(90deg, #e0e0e0 25%, #f0f0f0 50%, #e0e0e0 75%)',
-                        backgroundSize: '200% 100%',
-                        animation: 'shimmer 1.5s ease-in-out infinite',
-                    }} />
-                )}
-                {product.description && (
-                    <div style={{
-                        position: 'absolute',
-                        bottom: 0,
-                        left: 0,
-                        right: 0,
-                        padding: spacing[2],
-                        background: 'linear-gradient(to top, rgba(0,0,0,0.6), transparent)',
-                        color: colors.text.inverse,
-                        fontSize: '0.75rem',
-                        opacity: isHovered ? 1 : 0,
-                        transition: transitions.opacity,
-                    }}>
-                        {product.description}
-                    </div>
-                )}
-            </div>
-            <div style={contentStyle}>
-                <h3 style={nameStyle}>{product.name}</h3>
-                <p style={priceStyle}>{formatCurrency(product.price, settings.currency)}</p>
-                <button
-                    style={{
-                        ...buttonStyle,
-                        ...(isButtonHovered ? buttonHoverStyle : {}),
-                    }}
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        onAddToCart(product);
-                    }}
-                    onMouseEnter={() => setIsButtonHovered(true)}
-                    onMouseLeave={() => setIsButtonHovered(false)}
-                    aria-label={`Add ${product.name} to cart`}
-                >
-                    Add to Cart
-                </button>
-            </div>
+            <Card className={`overflow-hidden transition-all ${isHovered ? 'shadow-xl -translate-y-1' : 'shadow-md'}`}>
+                {/* Image Container */}
+                <div className="relative w-full h-40 overflow-hidden bg-gray-100">
+                    <img
+                        src={product.imageUrl}
+                        alt={product.name}
+                        className={`w-full h-full object-cover transition-all duration-300 ${
+                            imageLoaded ? 'opacity-100 scale-100' : 'opacity-0 scale-105'
+                        }`}
+                        onLoad={() => setImageLoaded(true)}
+                        loading="lazy"
+                    />
+                    {!imageLoaded && (
+                        <div className="absolute inset-0">
+                            <Skeleton className="w-full h-full" />
+                        </div>
+                    )}
+                    {/* Description overlay on hover */}
+                    {product.description && (
+                        <div
+                            className={`absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/60 to-transparent text-white text-xs transition-opacity ${
+                                isHovered ? 'opacity-100' : 'opacity-0'
+                            }`}
+                        >
+                            {product.description}
+                        </div>
+                    )}
+                </div>
+
+                {/* Content */}
+                <CardContent className="p-4 flex flex-col gap-2 flex-grow">
+                    <h3 className="text-base font-semibold text-gray-900 leading-tight line-clamp-2 flex-grow min-h-[2.6rem]">
+                        {product.name}
+                    </h3>
+                    <p className="text-lg font-bold text-primary tracking-tight">
+                        {formatCurrency(product.price, settings.currency)}
+                    </p>
+                    <Button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onAddToCart(product);
+                        }}
+                        className="w-full"
+                        size="sm"
+                        aria-label={`Add ${product.name} to cart`}
+                    >
+                        Add to Cart
+                    </Button>
+                </CardContent>
+            </Card>
         </motion.div>
     );
 };

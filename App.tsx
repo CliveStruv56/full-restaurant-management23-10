@@ -27,6 +27,11 @@ import { IntentSelection } from './components/IntentSelection';
 import { OrderTypeSelection } from './components/OrderTypeSelection';
 import { ReservationFlow } from './components/ReservationFlow';
 import { AccountCreationPrompt } from './components/AccountCreationPrompt';
+import { SuperAdminProvider } from './contexts/SuperAdminContext';
+import { SuperAdminPanel } from './components/admin/SuperAdminPanel';
+import MarketingLandingPage from './components/MarketingLandingPage';
+import SignupFlow from './components/signup/SignupFlow';
+import SignupPending from './components/signup/SignupPending';
 
 const CustomerApp = () => {
     const { user } = useAuth();
@@ -367,7 +372,7 @@ const CustomerFlowRouter: React.FC = () => {
 
 const App = () => {
     const { user, userRole, tenantMemberships, loading: authLoading } = useAuth();
-    const { tenant } = useTenant();
+    const { tenant, isSuperAdminPortal } = useTenant();
     const tenantId = tenant?.id;
     const [adminPage, setAdminPage] = useState('dashboard');
     const [isSeeding, setIsSeeding] = useState(true);
@@ -375,9 +380,12 @@ const App = () => {
 
     // Check URL path for special routes
     const path = window.location.pathname;
-    const isInvitationSignup = path.startsWith('/signup/');
+    const isPublicSignup = path === '/signup';
+    const isSignupPending = path === '/signup/pending';
+    const isInvitationSignup = path.startsWith('/signup/') && path !== '/signup' && path !== '/signup/pending';
     const isSelfRegister = path === '/register';
     const isFixUserPage = path === '/fix-user';
+    const isMarketingPage = path === '/' && !tenant;
 
     // Extract invitation token from URL if on signup page
     const invitationToken = isInvitationSignup ? path.split('/signup/')[1] : null;
@@ -390,7 +398,10 @@ const App = () => {
         Object.keys(tenantMemberships).length > 1 &&
         !isInvitationSignup &&
         !isSelfRegister &&
-        !isFixUserPage;
+        !isFixUserPage &&
+        !isPublicSignup &&
+        !isSignupPending &&
+        !isMarketingPage;
 
     // Check if we should show the fix user page
     useEffect(() => {
@@ -402,7 +413,7 @@ const App = () => {
 
     // Effect to run the seeding logic on initial app load
     useEffect(() => {
-        if (needsUserFix || isInvitationSignup || isSelfRegister) {
+        if (needsUserFix || isInvitationSignup || isSelfRegister || isPublicSignup || isSignupPending || isMarketingPage) {
             setIsSeeding(false);
             return; // Skip seeding for special pages
         }
@@ -459,6 +470,79 @@ const App = () => {
         return (
             <ToastProvider>
                 <SelfRegister />
+            </ToastProvider>
+        );
+    }
+
+    // Handle marketing landing page (public, no auth required)
+    if (isMarketingPage) {
+        return (
+            <ToastProvider>
+                <MarketingLandingPage />
+            </ToastProvider>
+        );
+    }
+
+    // Handle public signup flow (public, no auth required)
+    if (isPublicSignup) {
+        return (
+            <ToastProvider>
+                <SignupFlow />
+            </ToastProvider>
+        );
+    }
+
+    // Handle signup pending page (public, no auth required)
+    if (isSignupPending) {
+        return (
+            <ToastProvider>
+                <SignupPending />
+            </ToastProvider>
+        );
+    }
+
+    // Handle Super Admin Portal
+    if (isSuperAdminPortal) {
+        // Show loading state while auth is loading
+        if (authLoading) {
+            return <div style={{textAlign: 'center', padding: '50px'}}>Loading...</div>;
+        }
+
+        // Require authentication
+        if (!user) {
+            return (
+                <ToastProvider>
+                    <AuthPage />
+                </ToastProvider>
+            );
+        }
+
+        // Require super-admin role
+        if (userRole !== 'super-admin') {
+            return (
+                <ToastProvider>
+                    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+                        <div className="max-w-md w-full text-center p-8">
+                            <div className="text-6xl mb-6">🔒</div>
+                            <h1 className="text-3xl font-bold text-red-600 mb-4">Access Denied</h1>
+                            <p className="text-gray-700 mb-6">
+                                Super admin access required to view this page.
+                            </p>
+                            <p className="text-sm text-gray-600">
+                                Current role: <code className="bg-gray-100 px-2 py-1 rounded">{userRole || 'none'}</code>
+                            </p>
+                        </div>
+                    </div>
+                </ToastProvider>
+            );
+        }
+
+        // Show Super Admin Panel
+        return (
+            <ToastProvider>
+                <SuperAdminProvider>
+                    <SuperAdminPanel />
+                </SuperAdminProvider>
             </ToastProvider>
         );
     }

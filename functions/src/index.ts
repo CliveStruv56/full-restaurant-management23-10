@@ -26,6 +26,15 @@ export { sendAcceptanceNotificationTrigger } from './invitations/sendAcceptanceN
 export { cleanupExpiredInvitationsScheduled } from './invitations/cleanupExpiredInvitations';
 
 /**
+ * Reservation System Functions
+ *
+ * Phase 3: Customer Flow Redesign - Milestone 4
+ */
+
+// Auto-cancellation scheduled function for no-show reservations
+export { autoCancelNoShows } from './scheduledJobs';
+
+/**
  * Legacy Functions (to be refactored)
  *
  * Note: These are the old invitation functions that can be removed

@@ -8,11 +8,13 @@ import { colors, shadows, spacing, transitions, borderRadius } from '../theme';
 export const Header = ({
     cartCount,
     onCartClick,
-    onTitleClick
+    onTitleClick,
+    tableNumber
 }: {
     cartCount: number;
     onCartClick: () => void;
     onTitleClick?: () => void;
+    tableNumber?: number;
 }) => {
     const { user } = useAuth();
     const { tenant } = useTenant();
@@ -48,6 +50,12 @@ export const Header = ({
             : colors.background.secondary,
     };
 
+    const titleContainerStyle: CSSProperties = {
+        display: 'flex',
+        alignItems: 'center',
+        gap: spacing[3],
+    };
+
     const titleStyle: CSSProperties = {
         margin: 0,
         fontSize: 'clamp(1.2rem, 4vw, 1.5rem)',
@@ -56,6 +64,20 @@ export const Header = ({
         letterSpacing: '-0.02em',
         cursor: onTitleClick ? 'pointer' : 'default',
         userSelect: 'none',
+    };
+
+    const tableBadgeStyle: CSSProperties = {
+        backgroundColor: '#3498db',
+        color: 'white',
+        padding: '6px 12px',
+        borderRadius: borderRadius.lg,
+        fontSize: '0.85rem',
+        fontWeight: 600,
+        display: 'flex',
+        alignItems: 'center',
+        gap: '6px',
+        whiteSpace: 'nowrap',
+        boxShadow: shadows.sm,
     };
 
     const userInfoStyle: CSSProperties = {
@@ -107,18 +129,35 @@ export const Header = ({
 
     return (
         <header style={headerStyle}>
-            <motion.h1
-                style={titleStyle}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.5 }}
-                onClick={onTitleClick}
-                whileTap={onTitleClick ? { scale: 0.98 } : {}}
-                role={onTitleClick ? 'button' : undefined}
-                aria-label={onTitleClick ? 'Go to menu' : undefined}
-            >
-                {tenant?.businessName || 'Restaurant Management System'}
-            </motion.h1>
+            <div style={titleContainerStyle}>
+                <motion.h1
+                    style={titleStyle}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.5 }}
+                    onClick={onTitleClick}
+                    whileTap={onTitleClick ? { scale: 0.98 } : {}}
+                    role={onTitleClick ? 'button' : undefined}
+                    aria-label={onTitleClick ? 'Go to menu' : undefined}
+                >
+                    {tenant?.businessName || 'Restaurant Management System'}
+                </motion.h1>
+
+                {/* Table Number Badge */}
+                {tableNumber && (
+                    <motion.div
+                        style={tableBadgeStyle}
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ duration: 0.5, delay: 0.1 }}
+                        aria-label={`Table ${tableNumber}`}
+                    >
+                        <span style={{ fontSize: '1rem' }}>🪑</span>
+                        <span>Table {tableNumber}</span>
+                    </motion.div>
+                )}
+            </div>
+
             <div style={{ display: 'flex', alignItems: 'center', gap: spacing[4] }}>
                 {user && (
                     <motion.div
