@@ -2,37 +2,7 @@ import React, { createContext, useState, useEffect, useContext, ReactNode } from
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { primeOfflineCache } from '../firebase/offlineCache';
-
-// Tenant interface
-export interface Tenant {
-  id: string;
-  businessName: string;
-  businessType: 'cafe' | 'restaurant' | 'pub' | 'quick-service';
-  subdomain: string;
-  customDomain?: string;
-  enabledModules: {
-    base: boolean;
-    tableManagement: boolean;
-    management: boolean;
-    delivery: boolean;
-  };
-  subscription: {
-    plan: 'trial' | 'active' | 'cancelled';
-    trialEndsAt?: string;
-    modules: string[];
-  };
-  paymentGateway: {
-    provider: 'stripe' | 'square' | 'custom' | 'none';
-    config?: any;
-  };
-  branding?: {
-    primaryColor?: string;
-    logo?: string;
-    favicon?: string;
-  };
-  createdAt: string;
-  updatedAt: string;
-}
+import { Tenant } from '../types';
 
 interface TenantContextType {
   tenant: Tenant | null;

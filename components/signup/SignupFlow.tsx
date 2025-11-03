@@ -9,13 +9,13 @@ import { collection, addDoc, query, where, getDocs } from 'firebase/firestore';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { db, auth } from '../../firebase/config';
 import toast from 'react-hot-toast';
-
-type BusinessType = 'cafe' | 'restaurant' | 'pub' | 'quick-service';
+import { VerticalType } from '../../types';
+import { getVerticalConfig } from '../../src/config/verticals';
 
 interface SignupData {
   // Step 1: Business Info
   businessName: string;
-  businessType: BusinessType;
+  verticalType: VerticalType;
   contactEmail: string;
   contactPhone: string;
 
@@ -68,7 +68,7 @@ export default function SignupFlow() {
 
   const [signupData, setSignupData] = useState<SignupData>({
     businessName: '',
-    businessType: 'cafe',
+    verticalType: 'restaurant',
     contactEmail: '',
     contactPhone: '',
     subdomain: '',
@@ -127,7 +127,7 @@ export default function SignupFlow() {
       case 1:
         return !!(
           signupData.businessName &&
-          signupData.businessType &&
+          signupData.verticalType &&
           signupData.contactEmail &&
           signupData.contactPhone
         );
@@ -185,7 +185,7 @@ export default function SignupFlow() {
       // Create tenant document
       const tenantData = {
         businessName: signupData.businessName,
-        businessType: signupData.businessType,
+        verticalType: signupData.verticalType,
         subdomain: signupData.subdomain,
         contactEmail: signupData.contactEmail,
         contactPhone: signupData.contactPhone,
@@ -265,21 +265,25 @@ export default function SignupFlow() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="businessType" className="text-gray-700 font-medium">Business Type *</Label>
+              <Label htmlFor="verticalType" className="text-gray-700 font-medium">Business Type *</Label>
               <Select
-                value={signupData.businessType}
-                onValueChange={(value: BusinessType) => setSignupData({ ...signupData, businessType: value })}
+                value={signupData.verticalType}
+                onValueChange={(value: VerticalType) => setSignupData({ ...signupData, verticalType: value })}
               >
                 <SelectTrigger className="bg-white border-gray-300 text-gray-900">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="cafe">Cafe / Coffee Shop</SelectItem>
-                  <SelectItem value="restaurant">Restaurant</SelectItem>
-                  <SelectItem value="pub">Pub / Bar</SelectItem>
-                  <SelectItem value="quick-service">Quick Service</SelectItem>
+                  <SelectItem value="restaurant">Restaurant & Cafe</SelectItem>
+                  <SelectItem value="auto-shop">Auto Shop & Mechanic</SelectItem>
+                  <SelectItem value="salon">Salon & Spa</SelectItem>
+                  <SelectItem value="hotel">Hotel & Hospitality</SelectItem>
+                  <SelectItem value="retail">Retail Store</SelectItem>
                 </SelectContent>
               </Select>
+              <p className="text-sm text-gray-500">
+                {signupData.verticalType && getVerticalConfig(signupData.verticalType).description}
+              </p>
             </div>
 
             <div className="space-y-2">
