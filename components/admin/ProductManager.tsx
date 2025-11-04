@@ -6,6 +6,7 @@ import { formatCurrency } from '../../utils';
 import { ProductForm } from './ProductForm';
 import { BulkUploadModal } from './BulkUploadModal';
 import { useTenant } from '../../contexts/TenantContext';
+import { useTerminology } from '../../src/contexts/VerticalContext';
 import { addProduct, updateProduct, deleteProduct } from '../../firebase/api-multitenant';
 
 interface ProductManagerProps {
@@ -17,6 +18,7 @@ interface ProductManagerProps {
 export const ProductManager: React.FC<ProductManagerProps> = ({ products, categories, settings }) => {
     const { tenant } = useTenant();
     const tenantId = tenant?.id;
+    const terminology = useTerminology();
     const [isFormVisible, setIsFormVisible] = useState(false);
     const [isBulkUploadModalOpen, setIsBulkUploadModalOpen] = useState(false);
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -40,14 +42,14 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, catego
             toast.error('Unable to delete: Tenant not loaded');
             return;
         }
-        if (window.confirm('Are you sure you want to delete this product?')) {
-            const deleteToast = toast.loading('Deleting product...');
+        if (window.confirm(`Are you sure you want to delete this ${terminology.item}?`)) {
+            const deleteToast = toast.loading(`Deleting ${terminology.item}...`);
             try {
                 await deleteProduct(tenantId, productId);
-                toast.success('Product deleted successfully!', { id: deleteToast });
+                toast.success(`${terminology.item.charAt(0).toUpperCase() + terminology.item.slice(1)} deleted successfully!`, { id: deleteToast });
             } catch (error) {
                 console.error("Error deleting product:", error);
-                toast.error('Failed to delete product.', { id: deleteToast });
+                toast.error(`Failed to delete ${terminology.item}.`, { id: deleteToast });
             }
         }
     };
@@ -97,7 +99,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, catego
         if (link.download !== undefined) {
             const url = URL.createObjectURL(blob);
             link.setAttribute('href', url);
-            link.setAttribute('download', `products-export-${new Date().toISOString().split('T')[0]}.csv`);
+            link.setAttribute('download', `${terminology.itemPlural}-export-${new Date().toISOString().split('T')[0]}.csv`);
             link.style.visibility = 'hidden';
             document.body.appendChild(link);
             link.click();
@@ -110,11 +112,11 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, catego
     return (
         <>
             <div style={styles.adminSubHeader}>
-                <h2 style={styles.adminHeader}>Manage Products</h2>
+                <h2 style={styles.adminHeader}>Manage {terminology.itemPlural.charAt(0).toUpperCase() + terminology.itemPlural.slice(1)}</h2>
                 <div style={{display: 'flex', gap: '10px'}}>
                     <button style={styles.adminButtonSecondary} onClick={() => setIsBulkUploadModalOpen(true)}>Bulk Add</button>
-                    <button style={styles.adminButtonSecondary} onClick={handleExport}>Export Products</button>
-                    <button style={styles.adminButtonPrimary} onClick={handleAddClick}>+ Add Product</button>
+                    <button style={styles.adminButtonSecondary} onClick={handleExport}>Export {terminology.itemPlural.charAt(0).toUpperCase() + terminology.itemPlural.slice(1)}</button>
+                    <button style={styles.adminButtonPrimary} onClick={handleAddClick}>+ Add {terminology.item.charAt(0).toUpperCase() + terminology.item.slice(1)}</button>
                 </div>
             </div>
 
@@ -149,7 +151,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ products, catego
                     </table>
                 ) : (
                     <div style={{ padding: '20px', textAlign: 'center', color: 'var(--light-text-color)'}}>
-                        No products found. Add one to get started.
+                        No {terminology.itemPlural} found. Add one to get started.
                     </div>
                 )}
             </div>
