@@ -70,15 +70,24 @@ export const TenantProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       return null; // No tenant for public pages on localhost
     }
 
-    // Development: localhost → use demo tenant
-    if (hostname === 'localhost' || hostname === '127.0.0.1') {
-      return 'demo-tenant';
+    // Subdomain parsing: Extract tenant ID from hostname
+    const parts = hostname.split('.');
+
+    // Development: subdomain.localhost → 'subdomain'
+    // Example: some-good.localhost → 'some-good'
+    if (parts.length === 2 && (parts[1] === 'localhost' || parts[1] === '127')) {
+      return parts[0]; // Return subdomain as tenant ID
     }
 
-    // Production subdomain: client1.yourapp.com → 'client1'
-    const parts = hostname.split('.');
+    // Production subdomain: subdomain.domain.com → 'subdomain'
+    // Example: some-good.orderflow.app → 'some-good'
     if (parts.length >= 3) {
       return parts[0]; // subdomain is first part
+    }
+
+    // Plain localhost → use demo tenant
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+      return 'demo-tenant';
     }
 
     // Custom domain: Check Firestore for domain mapping
