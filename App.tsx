@@ -573,7 +573,7 @@ const App = () => {
                     <AuthPage />
                 ) : userRole === 'staff' ? (
                     <KitchenDisplaySystem />
-                ) : userRole === 'admin' ? (
+                ) : (userRole === 'admin' || userRole === 'super-admin') ? (
                     adminPage === 'kitchen' ? (
                         <KitchenDisplaySystem onBackToAdmin={() => setAdminPage('dashboard')} />
                     ) : adminPage === 'customer' ? (
