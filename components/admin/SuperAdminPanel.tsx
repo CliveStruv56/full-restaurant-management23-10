@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Switch } from '../ui/switch';
 import { formatDistance } from 'date-fns';
 import { db } from '../../firebase/config';
-import { collection, addDoc, updateDoc, doc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, updateDoc, doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import toast from 'react-hot-toast';
 import type { Tenant, VerticalType } from '../../types';
 import { getVerticalConfig } from '../../src/config/verticals';
@@ -103,7 +103,8 @@ export const SuperAdminPanel: React.FC = () => {
         updatedAt: serverTimestamp(),
       };
 
-      await addDoc(collection(db, 'tenantMetadata'), tenantData);
+      // Use subdomain as document ID for easy querying
+      await setDoc(doc(db, 'tenantMetadata', newTenant.subdomain), tenantData);
 
       toast.success('Tenant created successfully!');
       setCreateDialogOpen(false);
