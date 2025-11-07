@@ -411,6 +411,22 @@ const App = () => {
         }
     }, [isFixUserPage]);
 
+    // Auto-redirect super admins to Super Admin Portal
+    useEffect(() => {
+        // Only redirect if user is loaded and is a super admin
+        if (!authLoading && userRole === 'super-admin' && !isSuperAdminPortal) {
+            // Don't redirect if on special pages
+            if (isPublicSignup || isSignupPending || isInvitationSignup || isSelfRegister || isFixUserPage || isMarketingPage) {
+                return;
+            }
+
+            // Redirect to super admin portal
+            const superAdminUrl = window.location.protocol + '//superadmin.localhost:' + window.location.port;
+            console.log('🔄 Redirecting super admin to Super Admin Portal:', superAdminUrl);
+            window.location.href = superAdminUrl;
+        }
+    }, [authLoading, userRole, isSuperAdminPortal, isPublicSignup, isSignupPending, isInvitationSignup, isSelfRegister, isFixUserPage, isMarketingPage]);
+
     // Effect to run the seeding logic on initial app load
     useEffect(() => {
         if (needsUserFix || isInvitationSignup || isSelfRegister || isPublicSignup || isSignupPending || isMarketingPage) {
