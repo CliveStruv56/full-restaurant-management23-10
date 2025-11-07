@@ -226,6 +226,31 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ activePage, setActivePag
                 </div>
             </aside>
             <main style={styles.adminMain}>
+                {/* Tenant Name Header */}
+                {tenant?.businessName && (
+                    <div style={{
+                        padding: '15px 20px',
+                        backgroundColor: '#f8f9fa',
+                        borderBottom: '2px solid #e9ecef',
+                        marginBottom: '20px',
+                    }}>
+                        <h2 style={{
+                            margin: 0,
+                            fontSize: '1.5rem',
+                            fontWeight: 600,
+                            color: '#343a40',
+                        }}>
+                            {tenant.businessName}
+                        </h2>
+                        <p style={{
+                            margin: '5px 0 0 0',
+                            fontSize: '0.875rem',
+                            color: '#6c757d',
+                        }}>
+                            {tenant.subdomain}.localhost:3000
+                        </p>
+                    </div>
+                )}
                 {renderContent()}
             </main>
         </div>

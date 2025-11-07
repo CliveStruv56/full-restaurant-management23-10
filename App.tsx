@@ -411,7 +411,7 @@ const App = () => {
         }
     }, [isFixUserPage]);
 
-    // Auto-redirect super admins to Super Admin Portal
+    // Auto-redirect super admins to Super Admin Portal (unless explicitly viewing a tenant)
     useEffect(() => {
         // Only redirect if user is loaded and is a super admin
         if (!authLoading && userRole === 'super-admin' && !isSuperAdminPortal) {
@@ -420,12 +420,19 @@ const App = () => {
                 return;
             }
 
+            // Check if super admin is explicitly viewing this tenant
+            const isViewingTenant = sessionStorage.getItem('superAdminViewingTenant') === 'true';
+            if (isViewingTenant) {
+                console.log('✅ Super admin explicitly viewing tenant:', tenant?.id);
+                return; // Don't redirect
+            }
+
             // Redirect to super admin portal
             const superAdminUrl = window.location.protocol + '//superadmin.localhost:' + window.location.port;
             console.log('🔄 Redirecting super admin to Super Admin Portal:', superAdminUrl);
             window.location.href = superAdminUrl;
         }
-    }, [authLoading, userRole, isSuperAdminPortal, isPublicSignup, isSignupPending, isInvitationSignup, isSelfRegister, isFixUserPage, isMarketingPage]);
+    }, [authLoading, userRole, isSuperAdminPortal, tenant?.id, isPublicSignup, isSignupPending, isInvitationSignup, isSelfRegister, isFixUserPage, isMarketingPage]);
 
     // Effect to run the seeding logic on initial app load
     useEffect(() => {
