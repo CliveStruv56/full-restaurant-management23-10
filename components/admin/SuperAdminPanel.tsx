@@ -11,7 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Switch } from '../ui/switch';
 import { formatDistance } from 'date-fns';
 import { db } from '../../firebase/config';
-import { collection, addDoc, updateDoc, doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, updateDoc, doc, setDoc, serverTimestamp, getDoc } from 'firebase/firestore';
+import { auth } from '../../firebase/config';
 import toast from 'react-hot-toast';
 import type { Tenant, VerticalType } from '../../types';
 import { getVerticalConfig } from '../../src/config/verticals';
@@ -105,6 +106,28 @@ export const SuperAdminPanel: React.FC = () => {
 
       // Use subdomain as document ID for easy querying
       await setDoc(doc(db, 'tenantMetadata', newTenant.subdomain), tenantData);
+
+      // Auto-add the creating super-admin as an admin member of this tenant
+      if (auth.currentUser) {
+        const userDocRef = doc(db, 'users', auth.currentUser.uid);
+        const userDoc = await getDoc(userDocRef);
+
+        if (userDoc.exists()) {
+          const currentMemberships = userDoc.data().tenantMemberships || {};
+
+          // Add new tenant membership
+          await updateDoc(userDocRef, {
+            [`tenantMemberships.${newTenant.subdomain}`]: {
+              role: 'admin',
+              joinedAt: new Date().toISOString(),
+              isActive: true,
+            },
+            updatedAt: serverTimestamp(),
+          });
+
+          console.log(`✅ Added super-admin as admin member of tenant: ${newTenant.subdomain}`);
+        }
+      }
 
       toast.success('Tenant created successfully!');
       setCreateDialogOpen(false);
