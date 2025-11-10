@@ -75,8 +75,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                     let activeTenantId: string | null = null;
                     let activeRole: UserRole | null = null;
 
+                    // Special handling for super-admins: they can access any tenant
+                    if (appUser.role === 'super-admin') {
+                        activeRole = 'super-admin';
+                        // Super admins don't need a specific tenant ID for auth purposes
+                        // The tenant will be determined by the URL (TenantContext)
+                        activeTenantId = null;
+                    }
                     // Priority: currentTenantId > first active membership > legacy tenantId
-                    if (appUser.currentTenantId && appUser.tenantMemberships[appUser.currentTenantId]) {
+                    else if (appUser.currentTenantId && appUser.tenantMemberships[appUser.currentTenantId]) {
                         activeTenantId = appUser.currentTenantId;
                         activeRole = appUser.tenantMemberships[appUser.currentTenantId].role;
                     } else if (Object.keys(appUser.tenantMemberships).length > 0) {
