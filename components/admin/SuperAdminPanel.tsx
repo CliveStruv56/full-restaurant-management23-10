@@ -532,8 +532,17 @@ export const SuperAdminPanel: React.FC = () => {
                             onClick={() => {
                               // Use URL parameter instead of localStorage since localStorage is origin-specific
                               // superadmin.localhost and some-good.localhost have different localStorage!
+
+                              // Extract base domain from current URL (e.g., "localhost", "orderflow.app", etc.)
+                              const currentHostname = window.location.hostname;
+                              const parts = currentHostname.split('.');
+                              const baseDomain = parts.slice(1).join('.') || 'localhost'; // Remove subdomain, fallback to localhost
+
+                              const protocol = window.location.protocol;
                               const port = window.location.port;
-                              const url = `http://${tenant.subdomain}.localhost${port ? ':' + port : ''}?superAdminViewing=true`;
+                              const portStr = port ? ':' + port : '';
+                              const url = `${protocol}//${tenant.subdomain}.${baseDomain}${portStr}?superAdminViewing=true`;
+
                               console.log('🔗 View Site clicked - Opening with flag:', url);
                               window.open(url, '_blank');
                             }}

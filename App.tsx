@@ -459,7 +459,15 @@ const App = () => {
             }
 
             // Redirect to super admin portal
-            const superAdminUrl = window.location.protocol + '//superadmin.localhost:' + window.location.port;
+            // Extract base domain dynamically (e.g., "localhost", "orderflow.app", etc.)
+            const currentHostname = window.location.hostname;
+            const parts = currentHostname.split('.');
+            const baseDomain = parts.slice(1).join('.') || 'localhost'; // Remove subdomain, fallback to localhost
+
+            const port = window.location.port;
+            const portStr = port ? ':' + port : '';
+            const superAdminUrl = `${window.location.protocol}//superadmin.${baseDomain}${portStr}`;
+
             console.log('🔄 Redirecting super admin to Super Admin Portal:', superAdminUrl);
             window.location.href = superAdminUrl;
         }
