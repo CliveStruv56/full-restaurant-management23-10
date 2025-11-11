@@ -429,8 +429,15 @@ const App = () => {
                     const oneHour = 60 * 60 * 1000;
                     const isExpired = Date.now() - timestamp > oneHour;
 
-                    if (enabled && !isExpired && tenantId === tenant?.id) {
-                        console.log('✅ Super admin explicitly viewing tenant:', tenant?.id);
+                    // Extract current tenant ID from URL (don't wait for tenant to load)
+                    const hostname = window.location.hostname;
+                    const parts = hostname.split('.');
+                    const currentTenantId = parts.length === 2 && parts[1] === 'localhost'
+                        ? parts[0]
+                        : (parts.length >= 3 ? parts[0] : null);
+
+                    if (enabled && !isExpired && tenantId === currentTenantId) {
+                        console.log('✅ Super admin explicitly viewing tenant:', currentTenantId);
                         return; // Don't redirect
                     }
                 }
