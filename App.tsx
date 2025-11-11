@@ -441,6 +441,12 @@ const App = () => {
             return; // Skip seeding for special pages
         }
 
+        // Don't seed if no tenant ID (tenant still loading)
+        if (!tenantId) {
+            setIsSeeding(false);
+            return;
+        }
+
         const initializeApp = async () => {
             try {
                 await seedDatabaseIfNeeded(tenantId);
