@@ -411,6 +411,24 @@ const App = () => {
         }
     }, [isFixUserPage]);
 
+    // Check for superAdminViewing URL parameter and store in sessionStorage
+    // This must run BEFORE the redirect effect to capture the flag
+    useEffect(() => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const superAdminViewing = urlParams.get('superAdminViewing');
+
+        if (superAdminViewing === 'true') {
+            console.log('✅ Detected superAdminViewing URL parameter - storing in sessionStorage');
+            sessionStorage.setItem('superAdminViewingTenant', 'true');
+
+            // Clean the URL by removing the parameter
+            urlParams.delete('superAdminViewing');
+            const newUrl = window.location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : '');
+            window.history.replaceState({}, '', newUrl);
+            console.log('🧹 Cleaned URL parameter, sessionStorage flag set');
+        }
+    }, []);
+
     // Auto-redirect super admins to Super Admin Portal (unless explicitly viewing a tenant)
     useEffect(() => {
         console.log('🔍 Super Admin Redirect Effect Running:', {
@@ -428,46 +446,16 @@ const App = () => {
                 return;
             }
 
-            // Check if super admin is explicitly viewing this tenant
-            // Use localStorage (not sessionStorage) so it works across tabs
-            try {
-                const viewingFlag = localStorage.getItem('superAdminViewingTenant');
-                console.log('📦 localStorage flag:', viewingFlag);
+            // Check if super admin is explicitly viewing this tenant via sessionStorage flag
+            // (set from URL parameter by previous effect)
+            const viewingFlag = sessionStorage.getItem('superAdminViewingTenant');
+            console.log('📦 sessionStorage flag:', viewingFlag);
 
-                if (viewingFlag) {
-                    const { enabled, tenantId, timestamp } = JSON.parse(viewingFlag);
-                    const oneHour = 60 * 60 * 1000;
-                    const isExpired = Date.now() - timestamp > oneHour;
-
-                    // Extract current tenant ID from URL (don't wait for tenant to load)
-                    const hostname = window.location.hostname;
-                    const parts = hostname.split('.');
-                    const currentTenantId = parts.length === 2 && parts[1] === 'localhost'
-                        ? parts[0]
-                        : (parts.length >= 3 ? parts[0] : null);
-
-                    console.log('🔍 Redirect Check:', {
-                        enabled,
-                        tenantId,
-                        currentTenantId,
-                        isExpired,
-                        timestamp: new Date(timestamp).toLocaleString(),
-                        willSkipRedirect: enabled && !isExpired && tenantId === currentTenantId
-                    });
-
-                    if (enabled && !isExpired && tenantId === currentTenantId) {
-                        console.log('✅ Super admin explicitly viewing tenant:', currentTenantId, '- SKIPPING REDIRECT');
-                        return; // Don't redirect
-                    } else {
-                        console.log('❌ Redirect check FAILED - will redirect to super admin portal');
-                    }
-                } else {
-                    console.log('❌ No localStorage flag found - will redirect to super admin portal');
-                }
-            } catch (e) {
-                // Invalid JSON, clear the flag
-                console.error('❌ Error parsing localStorage flag:', e);
-                localStorage.removeItem('superAdminViewingTenant');
+            if (viewingFlag === 'true') {
+                console.log('✅ Super admin explicitly viewing tenant - SKIPPING REDIRECT');
+                return; // Don't redirect
+            } else {
+                console.log('❌ No sessionStorage flag - will redirect to super admin portal');
             }
 
             // Redirect to super admin portal
@@ -475,7 +463,7 @@ const App = () => {
             console.log('🔄 Redirecting super admin to Super Admin Portal:', superAdminUrl);
             window.location.href = superAdminUrl;
         }
-    }, [authLoading, userRole, isSuperAdminPortal, tenant?.id, isPublicSignup, isSignupPending, isInvitationSignup, isSelfRegister, isFixUserPage, isMarketingPage]);
+    }, [authLoading, userRole, isSuperAdminPortal, isPublicSignup, isSignupPending, isInvitationSignup, isSelfRegister, isFixUserPage, isMarketingPage]);
 
     // Effect to run the seeding logic on initial app load
     useEffect(() => {
