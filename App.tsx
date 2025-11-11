@@ -17,6 +17,7 @@ import { AuthPage } from './components/auth/AuthPage';
 import { placeOrder, getCart, getLiveOrdersForUser, streamCategories, streamProducts, streamSettings, updateCart, seedDatabaseIfNeeded, forceSeedDatabase, linkGuestOrders } from './firebase/api-multitenant';
 import { useTenant } from './contexts/TenantContext';
 import { CustomerJourneyProvider, useCustomerJourney } from './contexts/CustomerJourneyContext';
+import { VerticalProvider } from './src/contexts/VerticalContext';
 import { KitchenDisplaySystem } from './components/admin/KitchenDisplaySystem';
 import { useDailySpecial } from './hooks/useDailySpecial';
 import { ToastProvider } from './components/ToastProvider';
@@ -636,46 +637,48 @@ const App = () => {
     return (
         <ToastProvider>
             <CustomerJourneyProvider>
-                <QRCodeEntryHandler />
-                {!user ? (
-                    <AuthPage />
-                ) : userRole === 'staff' ? (
-                    <KitchenDisplaySystem />
-                ) : (userRole === 'admin' || userRole === 'super-admin') ? (
-                    adminPage === 'kitchen' ? (
-                        <KitchenDisplaySystem onBackToAdmin={() => setAdminPage('dashboard')} />
-                    ) : adminPage === 'customer' ? (
-                        <>
-                            <CustomerApp />
-                            {/* Floating back to admin button */}
-                            <button
-                                onClick={() => setAdminPage('dashboard')}
-                                style={{
-                                    position: 'fixed',
-                                    bottom: '90px',
-                                    right: '20px',
-                                    zIndex: 10000,
-                                    padding: '12px 20px',
-                                    backgroundColor: '#343a40',
-                                    color: 'white',
-                                    border: 'none',
-                                    borderRadius: '8px',
-                                    cursor: 'pointer',
-                                    fontSize: '14px',
-                                    fontWeight: 600,
-                                    boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-                                }}
-                            >
-                                Back to Admin
-                            </button>
-                        </>
+                <VerticalProvider>
+                    <QRCodeEntryHandler />
+                    {!user ? (
+                        <AuthPage />
+                    ) : userRole === 'staff' ? (
+                        <KitchenDisplaySystem />
+                    ) : (userRole === 'admin' || userRole === 'super-admin') ? (
+                        adminPage === 'kitchen' ? (
+                            <KitchenDisplaySystem onBackToAdmin={() => setAdminPage('dashboard')} />
+                        ) : adminPage === 'customer' ? (
+                            <>
+                                <CustomerApp />
+                                {/* Floating back to admin button */}
+                                <button
+                                    onClick={() => setAdminPage('dashboard')}
+                                    style={{
+                                        position: 'fixed',
+                                        bottom: '90px',
+                                        right: '20px',
+                                        zIndex: 10000,
+                                        padding: '12px 20px',
+                                        backgroundColor: '#343a40',
+                                        color: 'white',
+                                        border: 'none',
+                                        borderRadius: '8px',
+                                        cursor: 'pointer',
+                                        fontSize: '14px',
+                                        fontWeight: 600,
+                                        boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                                    }}
+                                >
+                                    Back to Admin
+                                </button>
+                            </>
+                        ) : (
+                            <AdminPanel activePage={adminPage} setActivePage={setAdminPage} />
+                        )
                     ) : (
-                        <AdminPanel activePage={adminPage} setActivePage={setAdminPage} />
-                    )
-                ) : (
-                    <CustomerFlowRouter />
-                )}
-                <OfflineIndicator />
+                        <CustomerFlowRouter />
+                    )}
+                    <OfflineIndicator />
+                </VerticalProvider>
             </CustomerJourneyProvider>
         </ToastProvider>
     );
