@@ -533,12 +533,19 @@ export const SuperAdminPanel: React.FC = () => {
                               // Set flag to allow super admin to view this tenant
                               // Use localStorage (not sessionStorage) so it works across tabs
                               // Add timestamp for 1-hour expiration
-                              localStorage.setItem('superAdminViewingTenant', JSON.stringify({
+                              const flagData = {
                                 enabled: true,
                                 tenantId: tenant.subdomain,
                                 timestamp: Date.now()
-                              }));
-                              window.open(`http://${tenant.subdomain}.localhost:3000`, '_blank');
+                              };
+                              console.log('🔗 View Site clicked - Setting localStorage flag:', flagData);
+                              localStorage.setItem('superAdminViewingTenant', JSON.stringify(flagData));
+
+                              // Use current port dynamically instead of hardcoding :3000
+                              const port = window.location.port;
+                              const url = `http://${tenant.subdomain}.localhost${port ? ':' + port : ''}`;
+                              console.log('✅ Flag set, opening:', url);
+                              window.open(url, '_blank');
                             }}
                           >
                             🔗 View Site

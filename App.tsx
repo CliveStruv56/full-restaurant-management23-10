@@ -413,10 +413,18 @@ const App = () => {
 
     // Auto-redirect super admins to Super Admin Portal (unless explicitly viewing a tenant)
     useEffect(() => {
+        console.log('🔍 Super Admin Redirect Effect Running:', {
+            authLoading,
+            userRole,
+            isSuperAdminPortal,
+            hostname: window.location.hostname
+        });
+
         // Only redirect if user is loaded and is a super admin
         if (!authLoading && userRole === 'super-admin' && !isSuperAdminPortal) {
             // Don't redirect if on special pages
             if (isPublicSignup || isSignupPending || isInvitationSignup || isSelfRegister || isFixUserPage || isMarketingPage) {
+                console.log('⏭️  Skipping redirect - on special page');
                 return;
             }
 
@@ -424,6 +432,8 @@ const App = () => {
             // Use localStorage (not sessionStorage) so it works across tabs
             try {
                 const viewingFlag = localStorage.getItem('superAdminViewingTenant');
+                console.log('📦 localStorage flag:', viewingFlag);
+
                 if (viewingFlag) {
                     const { enabled, tenantId, timestamp } = JSON.parse(viewingFlag);
                     const oneHour = 60 * 60 * 1000;
@@ -436,13 +446,27 @@ const App = () => {
                         ? parts[0]
                         : (parts.length >= 3 ? parts[0] : null);
 
+                    console.log('🔍 Redirect Check:', {
+                        enabled,
+                        tenantId,
+                        currentTenantId,
+                        isExpired,
+                        timestamp: new Date(timestamp).toLocaleString(),
+                        willSkipRedirect: enabled && !isExpired && tenantId === currentTenantId
+                    });
+
                     if (enabled && !isExpired && tenantId === currentTenantId) {
-                        console.log('✅ Super admin explicitly viewing tenant:', currentTenantId);
+                        console.log('✅ Super admin explicitly viewing tenant:', currentTenantId, '- SKIPPING REDIRECT');
                         return; // Don't redirect
+                    } else {
+                        console.log('❌ Redirect check FAILED - will redirect to super admin portal');
                     }
+                } else {
+                    console.log('❌ No localStorage flag found - will redirect to super admin portal');
                 }
             } catch (e) {
                 // Invalid JSON, clear the flag
+                console.error('❌ Error parsing localStorage flag:', e);
                 localStorage.removeItem('superAdminViewingTenant');
             }
 
