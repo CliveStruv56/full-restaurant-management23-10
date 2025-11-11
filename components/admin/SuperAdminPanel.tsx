@@ -531,7 +531,13 @@ export const SuperAdminPanel: React.FC = () => {
                             className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white"
                             onClick={() => {
                               // Set flag to allow super admin to view this tenant
-                              sessionStorage.setItem('superAdminViewingTenant', 'true');
+                              // Use localStorage (not sessionStorage) so it works across tabs
+                              // Add timestamp for 1-hour expiration
+                              localStorage.setItem('superAdminViewingTenant', JSON.stringify({
+                                enabled: true,
+                                tenantId: tenant.subdomain,
+                                timestamp: Date.now()
+                              }));
                               window.open(`http://${tenant.subdomain}.localhost:3000`, '_blank');
                             }}
                           >

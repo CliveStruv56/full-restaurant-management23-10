@@ -421,10 +421,22 @@ const App = () => {
             }
 
             // Check if super admin is explicitly viewing this tenant
-            const isViewingTenant = sessionStorage.getItem('superAdminViewingTenant') === 'true';
-            if (isViewingTenant) {
-                console.log('✅ Super admin explicitly viewing tenant:', tenant?.id);
-                return; // Don't redirect
+            // Use localStorage (not sessionStorage) so it works across tabs
+            try {
+                const viewingFlag = localStorage.getItem('superAdminViewingTenant');
+                if (viewingFlag) {
+                    const { enabled, tenantId, timestamp } = JSON.parse(viewingFlag);
+                    const oneHour = 60 * 60 * 1000;
+                    const isExpired = Date.now() - timestamp > oneHour;
+
+                    if (enabled && !isExpired && tenantId === tenant?.id) {
+                        console.log('✅ Super admin explicitly viewing tenant:', tenant?.id);
+                        return; // Don't redirect
+                    }
+                }
+            } catch (e) {
+                // Invalid JSON, clear the flag
+                localStorage.removeItem('superAdminViewingTenant');
             }
 
             // Redirect to super admin portal
