@@ -385,7 +385,7 @@ const App = () => {
     const isInvitationSignup = path.startsWith('/signup/') && path !== '/signup' && path !== '/signup/pending';
     const isSelfRegister = path === '/register';
     const isFixUserPage = path === '/fix-user';
-    const isMarketingPage = path === '/' && !tenant;
+    const isMarketingPage = path === '/' && !tenant && !isSuperAdminPortal;
 
     // Extract invitation token from URL if on signup page
     const invitationToken = isInvitationSignup ? path.split('/signup/')[1] : null;
