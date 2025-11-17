@@ -31,10 +31,24 @@ export const VerticalProvider: React.FC<VerticalProviderProps> = ({
   const { tenant } = useTenant();
 
   // Determine vertical type: override > tenant.verticalType > 'restaurant' (default)
-  const verticalType = verticalTypeOverride || tenant?.verticalType || 'restaurant';
+  let verticalType = verticalTypeOverride || tenant?.verticalType || 'restaurant';
+
+  // Validate vertical type - throw error if invalid
+  const validVerticalTypes: VerticalType[] = ['restaurant', 'auto-shop', 'salon', 'hotel', 'retail'];
+  if (!validVerticalTypes.includes(verticalType as VerticalType)) {
+    console.error(`Invalid vertical type: ${verticalType}, falling back to 'restaurant'`);
+    verticalType = 'restaurant';
+  }
 
   // Get vertical configuration
-  const config = useMemo(() => getVerticalConfig(verticalType), [verticalType]);
+  const config = useMemo(() => {
+    try {
+      return getVerticalConfig(verticalType as VerticalType);
+    } catch (error) {
+      console.error('Failed to load vertical configuration:', error);
+      throw new Error(`Failed to load vertical configuration for type: ${verticalType}`);
+    }
+  }, [verticalType]);
 
   // Helper to check if this is a specific vertical
   const isVertical = (type: VerticalType): boolean => {

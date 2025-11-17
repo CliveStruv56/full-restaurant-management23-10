@@ -3,6 +3,15 @@ node_modules/
 .pnp
 .pnp.js
 
+# Package lock files (commit only package.json, not lock files to avoid noise)
+# Uncomment if you want to ignore lock files:
+# package-lock.json
+# yarn.lock
+
+# Vite dependency cache
+node_modules/.vite/
+node_modules/.package-lock.json
+
 # Testing
 coverage/
 

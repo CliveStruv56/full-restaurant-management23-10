@@ -324,9 +324,10 @@ service cloud.firestore {
       // -------------------------
       // CATCH-ALL (for future collections)
       // -------------------------
+      // Note: Super admin access requires valid tenantId to prevent unrestricted access
       match /{document=**} {
-        allow read: if belongsToTenant(tenantId) || isSuperAdmin();
-        allow write: if isTenantAdmin(tenantId) || isSuperAdmin();
+        allow read: if belongsToTenant(tenantId) || (isSuperAdmin() && tenantId != null && tenantId.size() > 0);
+        allow write: if isTenantAdmin(tenantId); // Removed super admin from write to enforce explicit rules
       }
     }
 

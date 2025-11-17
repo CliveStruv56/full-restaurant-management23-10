@@ -18,8 +18,10 @@ import { placeOrder, getCart, getLiveOrdersForUser, streamCategories, streamProd
 import { useTenant } from './contexts/TenantContext';
 import { CustomerJourneyProvider, useCustomerJourney } from './contexts/CustomerJourneyContext';
 import { VerticalProvider } from './src/contexts/VerticalContext';
+import { ErrorBoundary, VerticalSystemErrorFallback } from './src/components/ErrorBoundary';
 import { KitchenDisplaySystem } from './components/admin/KitchenDisplaySystem';
 import { useDailySpecial } from './hooks/useDailySpecial';
+import { useSuperAdminRedirect } from './src/hooks/useSuperAdminRedirect';
 import { ToastProvider } from './components/ToastProvider';
 import { FixUserPage } from './components/FixUserPage';
 import { OfflineIndicator } from './components/OfflineIndicator';
@@ -412,67 +414,15 @@ const App = () => {
         }
     }, [isFixUserPage]);
 
-    // Check for superAdminViewing URL parameter and store in sessionStorage
-    // This must run BEFORE the redirect effect to capture the flag
-    useEffect(() => {
-        const urlParams = new URLSearchParams(window.location.search);
-        const superAdminViewing = urlParams.get('superAdminViewing');
-
-        if (superAdminViewing === 'true') {
-            console.log('✅ Detected superAdminViewing URL parameter - storing in sessionStorage');
-            sessionStorage.setItem('superAdminViewingTenant', 'true');
-
-            // Clean the URL by removing the parameter
-            urlParams.delete('superAdminViewing');
-            const newUrl = window.location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : '');
-            window.history.replaceState({}, '', newUrl);
-            console.log('🧹 Cleaned URL parameter, sessionStorage flag set');
-        }
-    }, []);
-
-    // Auto-redirect super admins to Super Admin Portal (unless explicitly viewing a tenant)
-    useEffect(() => {
-        console.log('🔍 Super Admin Redirect Effect Running:', {
-            authLoading,
-            userRole,
-            isSuperAdminPortal,
-            hostname: window.location.hostname
-        });
-
-        // Only redirect if user is loaded and is a super admin
-        if (!authLoading && userRole === 'super-admin' && !isSuperAdminPortal) {
-            // Don't redirect if on special pages
-            if (isPublicSignup || isSignupPending || isInvitationSignup || isSelfRegister || isFixUserPage || isMarketingPage) {
-                console.log('⏭️  Skipping redirect - on special page');
-                return;
-            }
-
-            // Check if super admin is explicitly viewing this tenant via sessionStorage flag
-            // (set from URL parameter by previous effect)
-            const viewingFlag = sessionStorage.getItem('superAdminViewingTenant');
-            console.log('📦 sessionStorage flag:', viewingFlag);
-
-            if (viewingFlag === 'true') {
-                console.log('✅ Super admin explicitly viewing tenant - SKIPPING REDIRECT');
-                return; // Don't redirect
-            } else {
-                console.log('❌ No sessionStorage flag - will redirect to super admin portal');
-            }
-
-            // Redirect to super admin portal
-            // Extract base domain dynamically (e.g., "localhost", "orderflow.app", etc.)
-            const currentHostname = window.location.hostname;
-            const parts = currentHostname.split('.');
-            const baseDomain = parts.slice(1).join('.') || 'localhost'; // Remove subdomain, fallback to localhost
-
-            const port = window.location.port;
-            const portStr = port ? ':' + port : '';
-            const superAdminUrl = `${window.location.protocol}//superadmin.${baseDomain}${portStr}`;
-
-            console.log('🔄 Redirecting super admin to Super Admin Portal:', superAdminUrl);
-            window.location.href = superAdminUrl;
-        }
-    }, [authLoading, userRole, isSuperAdminPortal, isPublicSignup, isSignupPending, isInvitationSignup, isSelfRegister, isFixUserPage, isMarketingPage]);
+    // Handle super admin auto-redirect logic (extracted to custom hook)
+    useSuperAdminRedirect({
+        isPublicSignup,
+        isSignupPending,
+        isInvitationSignup,
+        isSelfRegister,
+        isFixUserPage,
+        isMarketingPage,
+    });
 
     // Effect to run the seeding logic on initial app load
     useEffect(() => {
@@ -637,48 +587,50 @@ const App = () => {
     return (
         <ToastProvider>
             <CustomerJourneyProvider>
-                <VerticalProvider>
-                    <QRCodeEntryHandler />
-                    {!user ? (
-                        <AuthPage />
-                    ) : userRole === 'staff' ? (
-                        <KitchenDisplaySystem />
-                    ) : (userRole === 'admin' || userRole === 'super-admin') ? (
-                        adminPage === 'kitchen' ? (
-                            <KitchenDisplaySystem onBackToAdmin={() => setAdminPage('dashboard')} />
-                        ) : adminPage === 'customer' ? (
-                            <>
-                                <CustomerApp />
-                                {/* Floating back to admin button */}
-                                <button
-                                    onClick={() => setAdminPage('dashboard')}
-                                    style={{
-                                        position: 'fixed',
-                                        bottom: '90px',
-                                        right: '20px',
-                                        zIndex: 10000,
-                                        padding: '12px 20px',
-                                        backgroundColor: '#343a40',
-                                        color: 'white',
-                                        border: 'none',
-                                        borderRadius: '8px',
-                                        cursor: 'pointer',
-                                        fontSize: '14px',
-                                        fontWeight: 600,
-                                        boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-                                    }}
-                                >
-                                    Back to Admin
-                                </button>
-                            </>
+                <ErrorBoundary fallback={<VerticalSystemErrorFallback />}>
+                    <VerticalProvider>
+                        <QRCodeEntryHandler />
+                        {!user ? (
+                            <AuthPage />
+                        ) : userRole === 'staff' ? (
+                            <KitchenDisplaySystem />
+                        ) : (userRole === 'admin' || userRole === 'super-admin') ? (
+                            adminPage === 'kitchen' ? (
+                                <KitchenDisplaySystem onBackToAdmin={() => setAdminPage('dashboard')} />
+                            ) : adminPage === 'customer' ? (
+                                <>
+                                    <CustomerApp />
+                                    {/* Floating back to admin button */}
+                                    <button
+                                        onClick={() => setAdminPage('dashboard')}
+                                        style={{
+                                            position: 'fixed',
+                                            bottom: '90px',
+                                            right: '20px',
+                                            zIndex: 10000,
+                                            padding: '12px 20px',
+                                            backgroundColor: '#343a40',
+                                            color: 'white',
+                                            border: 'none',
+                                            borderRadius: '8px',
+                                            cursor: 'pointer',
+                                            fontSize: '14px',
+                                            fontWeight: 600,
+                                            boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                                        }}
+                                    >
+                                        Back to Admin
+                                    </button>
+                                </>
+                            ) : (
+                                <AdminPanel activePage={adminPage} setActivePage={setAdminPage} />
+                            )
                         ) : (
-                            <AdminPanel activePage={adminPage} setActivePage={setAdminPage} />
-                        )
-                    ) : (
-                        <CustomerFlowRouter />
-                    )}
-                    <OfflineIndicator />
-                </VerticalProvider>
+                            <CustomerFlowRouter />
+                        )}
+                        <OfflineIndicator />
+                    </VerticalProvider>
+                </ErrorBoundary>
             </CustomerJourneyProvider>
         </ToastProvider>
     );
