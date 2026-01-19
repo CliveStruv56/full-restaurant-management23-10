@@ -38,6 +38,8 @@ This is a **multi-tenant SaaS restaurant management platform** built with React,
 | **Multi-Tenant SaaS** | Complete - Subdomain isolation, super admin portal |
 | **Multi-Vertical System** | Complete - 5 verticals with terminology/features |
 | **Phase 3A (Table-Reservation Linking)** | **COMPLETE** - Backend + Admin UI implemented |
+| **Phase 4A (Stripe Payment Integration)** | **COMPLETE** - Cloud Functions, PaymentForm, CartModal flow |
+| **Phase 4B (Analytics Dashboard)** | **COMPLETE** - KPIs, charts, date filtering |
 | **Phase 5 (Visual Floor Plan Builder)** | **COMPLETE** - Drag-drop, SVG rendering, customer view |
 | **Test Suite** | 14/15 suites passing (191/194 tests) |
 
@@ -73,6 +75,27 @@ This is a **multi-tenant SaaS restaurant management platform** built with React,
 - **Cross-Subdomain Viewing**: URL parameter `?superAdminViewing=true`
 - **Tenant Management**: Create, seed, and view all tenants
 - **Type-Safe Storage Keys**: `src/constants/storage.ts`
+
+### Phase 4: Payment Integration & Analytics (January 2026)
+
+**Phase 4A: Stripe Payment Integration**
+- **Cloud Functions**: `createPaymentIntent`, `stripeWebhook` for payment processing
+- **PaymentForm.tsx**: Stripe Elements card input with error handling
+- **StripeProvider.tsx**: Tenant-specific Stripe initialization
+- **CartModal Integration**: 3-step checkout flow (cart → payment → confirmation)
+- **Payment Status**: Order tracking with paid/pending/failed/refunded states
+- **Admin UI**: Payment status column in OrderManager, settings in SettingsManager
+- **Security**: Webhook signature verification, secret keys in Functions config
+
+**Phase 4B: Analytics Dashboard**
+- **AnalyticsDashboard.tsx**: Main dashboard with KPIs and charts
+- **KPICard.tsx**: Revenue, orders, average value, customers with trend indicators
+- **RevenueChart.tsx**: Line chart showing revenue and orders over time
+- **OrderTypeChart.tsx**: Pie chart for takeaway/dine-in/delivery breakdown
+- **TopItemsChart.tsx**: Horizontal bar chart of best-selling items
+- **PeakHoursChart.tsx**: Bar chart showing orders by hour with peak indicator
+- **DateRangeSelector.tsx**: Filter by Today, Last 7 Days, Last 30 Days, etc.
+- **lib/analytics.ts**: Data aggregation functions (calculateSalesMetrics, etc.)
 
 ### Phase 5: Visual Floor Plan Builder (Complete)
 - **FloorPlanEditor.tsx**: Full drag-and-drop table positioning
@@ -122,41 +145,60 @@ Firestore Structure:
 
 ### Most Recent Work (January 2026 Session)
 
-**Last Commit:** `0c7c20a` - "feat: Implement code review recommendations for multi-vertical platform"
+**Last Completed:** Phase 4 - Payment Integration & Analytics Dashboard
 
-This commit included:
-1. `ErrorBoundary.tsx` with `VerticalSystemErrorFallback`
-2. `useSuperAdminRedirect` hook extraction
-3. Type-safe storage constants (`src/constants/storage.ts`)
-4. Tightened Firestore security rules
-5. Environment-based logging (suppressed in production)
+**Phase 4A - Stripe Payment Integration:**
+- Created Cloud Functions for payment processing (`createPaymentIntent`, `stripeWebhook`)
+- Built frontend payment components (StripeProvider, PaymentForm)
+- Integrated payment flow into CartModal with 3-step checkout
+- Added payment status display to OrderManager and OrderScreen
+- Added Stripe configuration section to SettingsManager
 
-**Session Updates (January 19, 2026):**
-- Fixed 3 failing test files (missing Jest imports, empty test suites)
-- Verified Phase 3A implementation is COMPLETE (was mislabeled as incomplete)
+**Phase 4B - Analytics Dashboard:**
+- Created data aggregation library (`lib/analytics.ts`)
+- Built chart components using Recharts (Revenue, OrderType, TopItems, PeakHours)
+- Created KPICard component with trend indicators
+- Built DateRangeSelector for filtering
+- Integrated AnalyticsDashboard with AdminPanel
 
 ### Current Working State
 
 **Branch:** `Vertical-Markets-Platform`
 
-**Modified Files (uncommitted):**
-- `firebase/__tests__/assignTableToReservation.test.ts` - Table assignment tests
-- `firebase/__tests__/updateReservationStatus.test.ts` - Fixed Jest import
-- `__tests__/floorPlan.settings.test.ts` - Converted to proper Jest tests
-- `__tests__/floorPlan.rendering.test.ts` - Converted to proper Jest tests
+**New Files Created (Phase 4):**
 
-**Phase 3A Status: Table-Reservation Linking - COMPLETE**
+| File | Purpose |
+|------|---------|
+| `functions/src/payments/createPaymentIntent.ts` | Cloud Function for Stripe PaymentIntent |
+| `functions/src/payments/webhookHandler.ts` | Stripe webhook event handler |
+| `functions/src/payments/index.ts` | Payment function exports |
+| `components/checkout/StripeProvider.tsx` | Tenant-specific Stripe initialization |
+| `components/checkout/PaymentForm.tsx` | Stripe Elements payment form |
+| `firebase/payments.ts` | Client-side payment API |
+| `lib/analytics.ts` | Data aggregation functions |
+| `components/admin/analytics/AnalyticsDashboard.tsx` | Main analytics dashboard |
+| `components/admin/analytics/KPICard.tsx` | Metric card component |
+| `components/admin/analytics/RevenueChart.tsx` | Revenue line chart |
+| `components/admin/analytics/OrderTypeChart.tsx` | Order type pie chart |
+| `components/admin/analytics/TopItemsChart.tsx` | Top items bar chart |
+| `components/admin/analytics/PeakHoursChart.tsx` | Peak hours bar chart |
+| `components/admin/analytics/DateRangeSelector.tsx` | Date range filter |
+| `components/admin/analytics/index.ts` | Analytics component exports |
 
-| Component | Location | Status |
-|-----------|----------|--------|
-| `calculateReservationDuration()` | `firebase/api-multitenant.ts:639` | Complete |
-| `checkTableAvailability()` | `firebase/api-multitenant.ts:693` | Complete |
-| `assignTableToReservation()` | `firebase/api-multitenant.ts:769` | Complete |
-| `updateReservationStatus()` | `firebase/api-multitenant.ts:922` | Complete |
-| Admin UI - Assign Table dropdown | `components/admin/ReservationManager.tsx` | Complete |
-| Double-booking prevention | Built into `checkTableAvailability()` | Complete |
+**Modified Files (Phase 4):**
 
-### Test Suite Status (After Fixes)
+| File | Changes |
+|------|---------|
+| `functions/src/index.ts` | Added payment function exports |
+| `components/CartModal.tsx` | Added 3-step payment checkout flow |
+| `types.ts` | Added payment fields to Order, updated SalesMetrics |
+| `firebase/api-multitenant.ts` | Added paymentStatus to placeOrder |
+| `components/admin/OrderManager.tsx` | Added payment status column |
+| `components/OrderScreen.tsx` | Added payment status badge |
+| `components/admin/SettingsManager.tsx` | Added Stripe settings section |
+| `components/admin/AdminPanel.tsx` | Added AnalyticsDashboard integration |
+
+### Test Suite Status
 
 ```
 Test Suites: 14 passed, 1 failed (Firebase permissions - needs emulator)
@@ -169,31 +211,32 @@ The only failing tests are in `landingPageSettings.test.ts` which require Fireba
 
 ## 4. What's Next
 
-### Immediate Priority: Phase 4 - Payment Integration
+### Immediate Priority: Phase 6 - Multi-Location Support
 
-Phase 3A (Table-Reservation Linking) is **COMPLETE**. Next priorities:
+Phase 4 (Payment Integration & Analytics) is **COMPLETE**. Next priorities:
 
-**Phase 4 - Payment Integration:**
-1. Integrate Stripe or Square payment gateway
-2. Add checkout UI with payment form
-3. Implement order receipt generation
-4. Add payment status tracking to orders
+**Phase 6 - Multi-Location Support:**
+1. Add location management to tenant settings
+2. Implement location-specific menus and pricing
+3. Add location selector to customer UI
+4. Enable location-based analytics filtering
 
-**Phase 4 - Analytics Dashboard:**
-1. Build sales analytics dashboard
-2. Add revenue tracking and reporting
-3. Implement peak hours analysis
-4. Create export functionality
+**Enhancements to Phase 4:**
+1. Email receipts for completed orders
+2. Export functionality for analytics data (CSV/PDF)
+3. Additional chart types (customer retention, revenue forecasting)
+4. Stripe Connect for marketplace payments
 
-### Short-Term (Phase 4)
-- Payment integration (Stripe or Square)
-- Advanced analytics dashboard
-- Email receipts for orders
-
-### Medium-Term (Phase 6)
+### Short-Term
 - Multi-location support
+- Email receipts integration
+- Analytics data export
+
+### Medium-Term
 - Advanced table management features
 - Waitlist management system
+- Inventory tracking integration
+- Staff scheduling module
 
 ### Platform Growth
 - Custom domain support
@@ -255,6 +298,8 @@ interface TenantMetadata {
 | Styling | Tailwind CSS | v4 |
 | Components | shadcn/ui | Latest |
 | Animation | Framer Motion | Latest |
+| Charts | Recharts | Latest |
+| Payments | Stripe | Latest |
 | Backend | Firebase | Latest |
 | Database | Firestore | - |
 | Auth | Firebase Auth | - |
@@ -301,11 +346,30 @@ interface TenantMetadata {
 | `src/components/admin/FloorPlanDisplay.tsx` | Customer-facing table status |
 | `src/components/admin/TableShapeRenderer.tsx` | Shape rendering (circle, square, rect) |
 
+### Payment Components (Phase 4A)
+| File | Purpose |
+|------|---------|
+| `components/checkout/StripeProvider.tsx` | Tenant Stripe initialization |
+| `components/checkout/PaymentForm.tsx` | Stripe Elements payment form |
+| `firebase/payments.ts` | Client-side payment API |
+
+### Analytics Components (Phase 4B)
+| File | Purpose |
+|------|---------|
+| `components/admin/analytics/AnalyticsDashboard.tsx` | Main dashboard container |
+| `components/admin/analytics/KPICard.tsx` | Metric card with trends |
+| `components/admin/analytics/RevenueChart.tsx` | Revenue over time chart |
+| `components/admin/analytics/OrderTypeChart.tsx` | Order type pie chart |
+| `components/admin/analytics/TopItemsChart.tsx` | Top selling items chart |
+| `components/admin/analytics/PeakHoursChart.tsx` | Peak hours bar chart |
+| `lib/analytics.ts` | Data aggregation functions |
+
 ### Cloud Functions
 | File | Purpose |
 |------|---------|
 | `functions/src/index.ts` | Function exports |
 | `functions/src/invitations/` | 8 invitation functions |
+| `functions/src/payments/` | Payment processing functions |
 | `functions/src/scheduledJobs.ts` | Auto-cancel no-shows |
 
 ---
@@ -379,10 +443,18 @@ git checkout master      # Switch to main branch
 - Only failing: `landingPageSettings.test.ts` - requires Firebase emulator (integration test)
 
 ### Completed in This Session (Jan 19, 2026)
-1. Fixed `firebase/__tests__/updateReservationStatus.test.ts` - Added Jest import
-2. Fixed `__tests__/floorPlan.settings.test.ts` - Converted to proper Jest tests
-3. Fixed `__tests__/floorPlan.rendering.test.ts` - Converted to proper Jest tests
-4. Verified Phase 3A is fully implemented
+1. **Phase 4A: Stripe Payment Integration**
+   - Created payment Cloud Functions (createPaymentIntent, webhookHandler)
+   - Built PaymentForm and StripeProvider components
+   - Integrated payment flow into CartModal
+   - Added payment status to OrderManager and OrderScreen
+   - Added Stripe settings to SettingsManager
+2. **Phase 4B: Analytics Dashboard**
+   - Created lib/analytics.ts with data aggregation functions
+   - Built chart components (Revenue, OrderType, TopItems, PeakHours)
+   - Created KPICard and DateRangeSelector components
+   - Integrated AnalyticsDashboard with AdminPanel
+3. Updated types.ts with payment and analytics types
 
 ### Technical Debt
 1. TDD test files use local stubs instead of actual implementations (design choice)
@@ -431,26 +503,30 @@ When starting a new session:
 3. **Check current branch**: Should be `Vertical-Markets-Platform`
 4. **Run dev server**: `npm run dev`
 5. **Check test status**: `npm test` (expect 14/15 passing)
-6. **Try the app**: Test table assignment in ReservationManager
+6. **Try the app**:
+   - Test payment flow in CartModal (with Stripe test keys)
+   - View Analytics Dashboard in Admin Panel
 
 ### Priority Actions for Next Session
-1. Commit any uncommitted changes
-2. Begin Phase 4: Payment Integration (Stripe/Square)
-3. Or begin Phase 4: Analytics Dashboard
-4. Or begin Phase 6: Multi-location Support
+1. Commit Phase 4 changes
+2. Configure Stripe test keys in tenant settings
+3. Deploy Cloud Functions: `cd functions && npm run deploy`
+4. Begin Phase 6: Multi-location Support
 
-### Uncommitted Changes to Review
-```bash
-git status  # Should show:
-# Modified: firebase/__tests__/assignTableToReservation.test.ts
-# Modified: firebase/__tests__/updateReservationStatus.test.ts
-# Modified: __tests__/floorPlan.settings.test.ts
-# Modified: __tests__/floorPlan.rendering.test.ts
-# Modified: handover-doc.md
-```
+### New Features to Test
+1. **Payment Flow**: Add items to cart → Checkout → Enter test card (4242424242424242)
+2. **Analytics Dashboard**: Admin Panel → Dashboard → View KPIs and charts
+3. **Date Filtering**: Change date range and verify charts update
+
+### Stripe Test Configuration
+To enable payments in development:
+1. Get test keys from Stripe Dashboard
+2. Add publishable key to tenant settings (SettingsManager → Payment Integration)
+3. Set `STRIPE_SECRET_KEY` in Firebase Functions config
+4. Use test card: `4242 4242 4242 4242` (any future date, any CVC)
 
 ---
 
-**Document Version:** 2.1
+**Document Version:** 3.0
 **Last Updated:** January 19, 2026
-**Status:** Phase 3A COMPLETE - Ready for Phase 4
+**Status:** Phase 4 COMPLETE - Ready for Phase 6

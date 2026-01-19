@@ -159,6 +159,97 @@ export const SettingsManager: React.FC<SettingsManagerProps> = ({ settings }) =>
                     </div>
                 </div>
 
+                {/* Phase 4A: Payment Configuration */}
+                <div style={styles.adminFormCard}>
+                    <h3 style={styles.adminModalTitle}>Payment Integration</h3>
+                    <p style={styles.settingsHelperText}>
+                        Configure Stripe for secure online payments. Payments are processed via Stripe's payment infrastructure.
+                    </p>
+
+                    {/* Payment Status Display */}
+                    <div style={{
+                        padding: '16px',
+                        backgroundColor: tenant?.paymentGateway?.config?.publishableKey ? '#d1fae5' : '#f3f4f6',
+                        borderRadius: '8px',
+                        marginBottom: '20px',
+                    }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <span style={{
+                                width: '12px',
+                                height: '12px',
+                                borderRadius: '50%',
+                                backgroundColor: tenant?.paymentGateway?.config?.publishableKey ? '#10b981' : '#9ca3af',
+                            }} />
+                            <span style={{
+                                fontWeight: 600,
+                                color: tenant?.paymentGateway?.config?.publishableKey ? '#065f46' : '#6b7280',
+                            }}>
+                                {tenant?.paymentGateway?.config?.publishableKey ? 'Stripe Connected' : 'Stripe Not Configured'}
+                            </span>
+                        </div>
+                        {tenant?.paymentGateway?.config?.publishableKey && (
+                            <p style={{ margin: '10px 0 0 22px', fontSize: '13px', color: '#065f46' }}>
+                                {tenant.paymentGateway.config.publishableKey.startsWith('pk_test_')
+                                    ? '🧪 Test Mode - Use test cards for payments'
+                                    : '✓ Live Mode - Real payments enabled'
+                                }
+                            </p>
+                        )}
+                    </div>
+
+                    {/* Configuration Info */}
+                    <div style={{
+                        padding: '16px',
+                        backgroundColor: '#eff6ff',
+                        borderRadius: '8px',
+                        border: '1px solid #bfdbfe',
+                    }}>
+                        <h4 style={{ margin: '0 0 10px 0', fontSize: '14px', color: '#1e40af' }}>
+                            Setup Instructions
+                        </h4>
+                        <ol style={{ margin: 0, paddingLeft: '20px', fontSize: '13px', color: '#1e40af', lineHeight: 1.6 }}>
+                            <li>Create a Stripe account at <a href="https://stripe.com" target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb' }}>stripe.com</a></li>
+                            <li>Get your API keys from the Stripe Dashboard</li>
+                            <li>Contact your administrator to configure the keys</li>
+                            <li>Set up the webhook endpoint for payment confirmations</li>
+                        </ol>
+                        {tenant?.id && (
+                            <div style={{ marginTop: '15px', padding: '10px', backgroundColor: '#dbeafe', borderRadius: '6px' }}>
+                                <p style={{ margin: 0, fontSize: '12px', color: '#1e40af' }}>
+                                    <strong>Webhook URL:</strong>
+                                </p>
+                                <code style={{
+                                    display: 'block',
+                                    marginTop: '5px',
+                                    padding: '8px',
+                                    backgroundColor: '#ffffff',
+                                    borderRadius: '4px',
+                                    fontSize: '11px',
+                                    wordBreak: 'break-all',
+                                    color: '#374151',
+                                }}>
+                                    https://us-central1-coffee-shop-mvp-4ff60.cloudfunctions.net/stripeWebhook
+                                </code>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Test Card Info (only show if in test mode) */}
+                    {tenant?.paymentGateway?.config?.publishableKey?.startsWith('pk_test_') && (
+                        <div style={{
+                            marginTop: '15px',
+                            padding: '12px',
+                            backgroundColor: '#fef3c7',
+                            borderRadius: '8px',
+                            border: '1px solid #fcd34d',
+                        }}>
+                            <p style={{ margin: 0, fontSize: '13px', color: '#92400e' }}>
+                                <strong>Test Card:</strong> 4242 4242 4242 4242 | Any future date | Any CVC
+                            </p>
+                        </div>
+                    )}
+                </div>
+
                 <div style={styles.adminFormCard}>
                     <h3 style={styles.adminModalTitle}>Visual Floor Plan Module</h3>
                     <p style={styles.settingsHelperText}>Enable visual table arrangement with drag-and-drop floor plan builder. Table positions will be preserved when disabled.</p>

@@ -62,16 +62,49 @@ export const OrderScreen = ({ order, loyaltyPoints, settings }: { order: Order |
         ...(order.status === 'Ready for Collection' && styles.orderStatusReady),
     };
 
+    // Phase 4A: Payment status display
+    const getPaymentBadge = () => {
+        if (!order.paymentStatus) return null;
+
+        const badgeStyles: Record<string, React.CSSProperties> = {
+            paid: { backgroundColor: '#d1fae5', color: '#065f46' },
+            pending: { backgroundColor: '#fef3c7', color: '#92400e' },
+            failed: { backgroundColor: '#fee2e2', color: '#991b1b' },
+            refunded: { backgroundColor: '#e5e7eb', color: '#374151' },
+        };
+
+        const style = badgeStyles[order.paymentStatus] || { backgroundColor: '#f3f4f6', color: '#6b7280' };
+
+        return (
+            <span style={{
+                ...style,
+                padding: '4px 10px',
+                borderRadius: '12px',
+                fontSize: '0.85em',
+                fontWeight: 600,
+                marginLeft: '10px',
+            }}>
+                {order.paymentStatus === 'paid' && '✓ '}
+                {order.paymentStatus.charAt(0).toUpperCase() + order.paymentStatus.slice(1)}
+            </span>
+        );
+    };
+
     return (
         <div style={styles.screen}>
             {settings.loyaltyEnabled && <LoyaltyCard points={loyaltyPoints} settings={settings} />}
             <h2 style={styles.categoryTitle}>Your Order</h2>
             <div style={styles.orderCard}>
                 <div style={styles.orderHeader}>
-                    <span style={styles.orderId}>Order #{order.id}</span>
-                    <span style={statusStyle}>{order.status}</span>
+                    <span style={styles.orderId}>Order #{order.id.slice(-6)}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        {getPaymentBadge()}
+                        <span style={statusStyle}>{order.status}</span>
+                    </div>
                 </div>
-                <p style={styles.orderTime}>Collection: <strong>{formatDisplayTime(order.collectionTime)}</strong></p>
+                <p style={styles.orderTime}>
+                    {order.orderType === 'dine-in' ? 'Ordered' : 'Collection'}: <strong>{formatDisplayTime(order.collectionTime)}</strong>
+                </p>
                 <ul style={{...styles.cartList, marginBottom: '15px' }}>
                      {order.items.map(item => (
                         <li key={item.cartItemId} style={{...styles.cartItem, border: 'none', paddingBottom: 0, marginBottom: '10px'}}>

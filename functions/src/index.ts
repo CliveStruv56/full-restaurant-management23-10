@@ -35,6 +35,15 @@ export { cleanupExpiredInvitationsScheduled } from './invitations/cleanupExpired
 export { autoCancelNoShows } from './scheduledJobs';
 
 /**
+ * Payment Integration Functions
+ *
+ * Phase 4A: Stripe Payment Integration
+ */
+
+// Payment intent creation and webhook handling
+export { createPaymentIntent, stripeWebhook } from './payments';
+
+/**
  * Legacy Functions (to be refactored)
  *
  * Note: These are the old invitation functions that can be removed

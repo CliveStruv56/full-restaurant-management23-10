@@ -270,6 +270,7 @@ export const placeOrder = async (
         orderType,
         collectionTime,
         orderTime: new Date().toISOString(),
+        paymentStatus: 'pending', // Phase 4A: Default to pending for Stripe integration
         // Optional fields
         ...(tableNumber && { tableNumber }),
         ...(guestCount && { guestCount }),

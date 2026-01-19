@@ -1,11 +1,14 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import toast from 'react-hot-toast';
-import { CartItem, AppSettings, Order, TimeSlot } from '../types';
+import { CartItem, AppSettings, Order, TimeSlot, Tenant } from '../types';
 import { styles } from '../styles';
 import { formatCurrency, generateAvailableSlots } from '../utils';
 import { ShoppingCartIcon } from './Icons';
 import { DateSlotsModal } from './DateSlotsModal';
 import { FloorPlanDisplay } from './customer/FloorPlanDisplay';
+import { StripeProvider } from './checkout/StripeProvider';
+import { PaymentForm } from './checkout/PaymentForm';
+import { createPaymentIntent, amountToCents, isStripeConfigured } from '../firebase/payments';
 
 interface CartModalProps {
     isOpen: boolean;
@@ -19,14 +22,18 @@ interface CartModalProps {
         tableNumber?: number,
         guestCount?: number,
         rewardItem?: { name: string, price: number }
-    ) => void;
+    ) => Promise<string | null>; // Returns orderId or null
     settings: AppSettings;
     orders: Order[];
     loyaltyPoints: number;
     isRewardApplied: boolean;
     onRewardToggle: (isApplied: boolean) => void;
     initialOrderType?: 'takeaway' | 'dine-in' | 'delivery';
+    tenant?: Tenant | null; // For Stripe configuration
 }
+
+// Payment step types
+type CheckoutStep = 'cart' | 'payment' | 'confirmation';
 
 const TimeSlotPicker = ({ settings, orders, selectedTime, onSelectTime }: { settings: AppSettings, orders: Order[], selectedTime: string, onSelectTime: (time: string) => void }) => {
     const [viewingDate, setViewingDate] = useState<string | null>(null);
@@ -119,12 +126,32 @@ const TimeSlotPicker = ({ settings, orders, selectedTime, onSelectTime }: { sett
 };
 
 
-export const CartModal: React.FC<CartModalProps> = ({ isOpen, onClose, cart, onUpdateQuantity, onPlaceOrder, settings, orders, loyaltyPoints, isRewardApplied, onRewardToggle, initialOrderType }) => {
+export const CartModal: React.FC<CartModalProps> = ({ isOpen, onClose, cart, onUpdateQuantity, onPlaceOrder, settings, orders, loyaltyPoints, isRewardApplied, onRewardToggle, initialOrderType, tenant }) => {
     const [selectedTime, setSelectedTime] = useState('');
     const [orderType, setOrderType] = useState<'takeaway' | 'dine-in' | 'delivery'>(initialOrderType || 'takeaway');
     const [tableNumber, setTableNumber] = useState<number | undefined>(undefined);
     const [guestCount, setGuestCount] = useState<number>(2);
     const [showFloorPlan, setShowFloorPlan] = useState(false);
+
+    // Payment state - Phase 4A
+    const [checkoutStep, setCheckoutStep] = useState<CheckoutStep>('cart');
+    const [clientSecret, setClientSecret] = useState<string | null>(null);
+    const [currentOrderId, setCurrentOrderId] = useState<string | null>(null);
+    const [isProcessingOrder, setIsProcessingOrder] = useState(false);
+
+    // Check if Stripe is configured
+    const stripePublishableKey = tenant?.paymentGateway?.config?.publishableKey;
+    const stripeEnabled = isStripeConfigured(stripePublishableKey);
+
+    // Reset checkout state when modal closes or cart changes
+    useEffect(() => {
+        if (!isOpen) {
+            setCheckoutStep('cart');
+            setClientSecret(null);
+            setCurrentOrderId(null);
+            setIsProcessingOrder(false);
+        }
+    }, [isOpen]);
 
     // Update orderType if initialOrderType changes (when user navigates from landing page)
     useEffect(() => {
@@ -162,16 +189,18 @@ export const CartModal: React.FC<CartModalProps> = ({ isOpen, onClose, cart, onU
         toast.success(`Table ${selectedTableNumber} selected`);
     };
 
-    const handlePlaceOrderClick = () => {
+    const handlePlaceOrderClick = async () => {
         // For takeaway orders, time selection is required
         if (orderType === 'takeaway' && !selectedTime) {
             toast.error("Please select a collection time.");
             return;
         }
         // For dine-in, time is auto-set
+        let orderTime = selectedTime;
         if (orderType === 'dine-in' && !selectedTime) {
             const now = new Date();
-            setSelectedTime(now.toISOString());
+            orderTime = now.toISOString();
+            setSelectedTime(orderTime);
         }
         if (cart.length === 0) return;
 
@@ -188,27 +217,171 @@ export const CartModal: React.FC<CartModalProps> = ({ isOpen, onClose, cart, onU
         }
 
         const reward = isRewardApplied && rewardEligibleItem ? { name: rewardEligibleItem.name, price: rewardEligibleItem.price } : undefined;
-        onPlaceOrder(
-            selectedTime,
-            finalTotal,
-            orderType,
-            orderType === 'dine-in' ? tableNumber : undefined,
-            orderType === 'dine-in' ? guestCount : undefined,
-            reward
-        );
+
+        // If Stripe is enabled, go through payment flow
+        if (stripeEnabled && finalTotal > 0) {
+            setIsProcessingOrder(true);
+            const loadingToast = toast.loading('Creating order...');
+
+            try {
+                // 1. Create order with pending payment status
+                const orderId = await onPlaceOrder(
+                    orderTime,
+                    finalTotal,
+                    orderType,
+                    orderType === 'dine-in' ? tableNumber : undefined,
+                    orderType === 'dine-in' ? guestCount : undefined,
+                    reward
+                );
+
+                if (!orderId) {
+                    toast.error('Failed to create order', { id: loadingToast });
+                    setIsProcessingOrder(false);
+                    return;
+                }
+
+                setCurrentOrderId(orderId);
+
+                // 2. Create payment intent
+                const amountInCents = amountToCents(finalTotal);
+                const paymentResult = await createPaymentIntent(
+                    orderId,
+                    amountInCents,
+                    settings.currency
+                );
+
+                if (!paymentResult.success || !paymentResult.clientSecret) {
+                    toast.error(paymentResult.error || 'Failed to initialize payment', { id: loadingToast });
+                    setIsProcessingOrder(false);
+                    return;
+                }
+
+                // 3. Show payment form
+                setClientSecret(paymentResult.clientSecret);
+                setCheckoutStep('payment');
+                toast.dismiss(loadingToast);
+            } catch (error: any) {
+                toast.error(error.message || 'Failed to create order', { id: loadingToast });
+            } finally {
+                setIsProcessingOrder(false);
+            }
+        } else {
+            // No payment required - place order directly
+            await onPlaceOrder(
+                orderTime,
+                finalTotal,
+                orderType,
+                orderType === 'dine-in' ? tableNumber : undefined,
+                orderType === 'dine-in' ? guestCount : undefined,
+                reward
+            );
+        }
+    };
+
+    // Payment success handler
+    const handlePaymentSuccess = () => {
+        setCheckoutStep('confirmation');
+        toast.success('Payment successful! Your order is being prepared.');
+    };
+
+    // Payment error handler
+    const handlePaymentError = (error: string) => {
+        toast.error(error);
+    };
+
+    // Cancel payment and go back to cart
+    const handlePaymentCancel = () => {
+        setCheckoutStep('cart');
+        setClientSecret(null);
+        // Note: Order remains in pending state - it can be deleted or paid later
+        toast('Payment cancelled. Your order is still pending.', { icon: 'info' });
     };
 
     if (!isOpen) return null;
 
+    // Render payment step
+    const renderPaymentStep = () => {
+        if (!clientSecret) return null;
+
+        return (
+            <StripeProvider publishableKey={stripePublishableKey}>
+                <PaymentForm
+                    clientSecret={clientSecret}
+                    amount={amountToCents(finalTotal)}
+                    currency={settings.currency}
+                    onSuccess={handlePaymentSuccess}
+                    onError={handlePaymentError}
+                    onCancel={handlePaymentCancel}
+                />
+            </StripeProvider>
+        );
+    };
+
+    // Render confirmation step
+    const renderConfirmationStep = () => (
+        <div style={{ textAlign: 'center', padding: '40px 20px' }}>
+            <div style={{
+                width: '80px',
+                height: '80px',
+                backgroundColor: '#10b981',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 20px',
+            }}>
+                <span style={{ fontSize: '40px', color: 'white' }}>✓</span>
+            </div>
+            <h3 style={{ margin: '0 0 10px 0', fontSize: '1.5em', color: '#22223b' }}>
+                Payment Successful!
+            </h3>
+            <p style={{ color: '#6b7280', marginBottom: '20px' }}>
+                Your order #{currentOrderId?.slice(-6)} is being prepared.
+            </p>
+            <p style={{ color: '#6b7280', fontSize: '14px', marginBottom: '30px' }}>
+                {orderType === 'takeaway'
+                    ? `Ready for collection at ${new Date(selectedTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+                    : 'Your food will be brought to your table shortly.'
+                }
+            </p>
+            <button
+                onClick={onClose}
+                style={{
+                    ...styles.optionsModalButton as React.CSSProperties,
+                    padding: '14px 40px',
+                    backgroundColor: '#4a4e69',
+                }}
+            >
+                Done
+            </button>
+        </div>
+    );
+
     return (
-        <div style={styles.modalOverlay} onClick={onClose}>
+        <div style={styles.modalOverlay} onClick={checkoutStep === 'cart' ? onClose : undefined}>
             <div style={{...styles.optionsModalContent, maxWidth: '600px'}} onClick={e => e.stopPropagation()}>
                 <header style={styles.modalHeader}>
-                    <h2 style={styles.modalTitle}>Your Order</h2>
-                    <button style={styles.closeButton} onClick={onClose} aria-label="Close cart">&times;</button>
+                    <h2 style={styles.modalTitle}>
+                        {checkoutStep === 'cart' && 'Your Order'}
+                        {checkoutStep === 'payment' && 'Payment'}
+                        {checkoutStep === 'confirmation' && 'Order Confirmed'}
+                    </h2>
+                    {checkoutStep === 'cart' && (
+                        <button style={styles.closeButton} onClick={onClose} aria-label="Close cart">&times;</button>
+                    )}
+                    {checkoutStep === 'payment' && (
+                        <button style={styles.closeButton} onClick={handlePaymentCancel} aria-label="Cancel payment">&times;</button>
+                    )}
                 </header>
                 <div style={styles.modalBody}>
-                    {cart.length === 0 ? (
+                    {/* Payment Step */}
+                    {checkoutStep === 'payment' && renderPaymentStep()}
+
+                    {/* Confirmation Step */}
+                    {checkoutStep === 'confirmation' && renderConfirmationStep()}
+
+                    {/* Cart Step */}
+                    {checkoutStep === 'cart' && cart.length === 0 ? (
                         <div style={styles.emptyMessage}>
                             <ShoppingCartIcon />
                             <p>Your cart is empty.</p>
@@ -393,19 +566,41 @@ export const CartModal: React.FC<CartModalProps> = ({ isOpen, onClose, cart, onU
                                     </p>
                                 </div>
                             )}
+
+                            {/* Stripe test mode indicator */}
+                            {stripeEnabled && stripePublishableKey?.startsWith('pk_test_') && (
+                                <div style={{
+                                    marginTop: '20px',
+                                    padding: '8px 12px',
+                                    backgroundColor: '#fef3c7',
+                                    borderRadius: '6px',
+                                    border: '1px solid #fcd34d',
+                                }}>
+                                    <p style={{margin: 0, fontSize: '12px', color: '#92400e'}}>
+                                        🧪 Test Mode: Use card 4242 4242 4242 4242 with any future date and CVC
+                                    </p>
+                                </div>
+                            )}
                         </>
                     )}
                 </div>
-                <footer style={styles.optionsModalFooter}>
-                    <button style={styles.adminButtonSecondary} onClick={onClose}>Continue Shopping</button>
-                    <button 
-                        style={styles.optionsModalButton} 
-                        onClick={handlePlaceOrderClick}
-                        disabled={cart.length === 0 || !selectedTime}
-                    >
-                        Place Order
-                    </button>
-                </footer>
+                {/* Footer - only show for cart step */}
+                {checkoutStep === 'cart' && (
+                    <footer style={styles.optionsModalFooter}>
+                        <button style={styles.adminButtonSecondary} onClick={onClose}>Continue Shopping</button>
+                        <button
+                            style={{
+                                ...styles.optionsModalButton as React.CSSProperties,
+                                opacity: (cart.length === 0 || !selectedTime || isProcessingOrder) ? 0.6 : 1,
+                                cursor: (cart.length === 0 || !selectedTime || isProcessingOrder) ? 'not-allowed' : 'pointer',
+                            }}
+                            onClick={handlePlaceOrderClick}
+                            disabled={cart.length === 0 || !selectedTime || isProcessingOrder}
+                        >
+                            {isProcessingOrder ? 'Processing...' : (stripeEnabled && finalTotal > 0 ? 'Continue to Payment' : 'Place Order')}
+                        </button>
+                    </footer>
+                )}
             </div>
 
             {/* Floor Plan Modal */}

@@ -124,8 +124,11 @@ export interface Order {
       itemName: string;
       discountAmount: number;
   };
-  paymentStatus?: 'pending' | 'paid' | 'refunded'; // NEW
+  paymentStatus?: 'pending' | 'paid' | 'failed' | 'refunded'; // NEW - Phase 4A
   paymentMethod?: string; // 'stripe', 'square', 'cash'
+  paymentIntentId?: string; // Stripe PaymentIntent ID - Phase 4A
+  paidAt?: string; // ISO 8601 timestamp when payment was completed
+  stripeChargeId?: string; // Stripe charge ID for refunds
 }
 
 export interface DailySpecial {
@@ -301,7 +304,11 @@ export interface Tenant {
   };
   paymentGateway: {
     provider: 'stripe' | 'square' | 'custom' | 'none';
-    config?: any;
+    config?: {
+      publishableKey?: string; // Stripe publishable key (pk_test_xxx or pk_live_xxx)
+      // Square and other provider configs can be added here
+      [key: string]: any;
+    };
   };
   branding?: {
     primaryColor?: string;
@@ -438,15 +445,19 @@ export interface SalesMetrics {
   revenueByDay: {
     date: string;
     revenue: number;
+    orders: number;
   }[];
   revenueByHour: {
     hour: number;
+    label: string;
+    orders: number;
     revenue: number;
   }[];
   orderTypeBreakdown: {
     type: 'takeaway' | 'dine-in' | 'delivery';
     count: number;
     revenue: number;
+    percentage: number;
   }[];
 }
 

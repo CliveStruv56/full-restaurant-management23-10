@@ -11,6 +11,7 @@ import { QRCodeManager } from './QRCodeManager';
 import { ReservationManager } from './ReservationManager';
 import { TableManager } from './TableManager';
 import { DashboardIcon, ProductsIcon, OrdersIcon, SettingsIcon, CategoryIcon, KitchenIcon } from '../Icons';
+import { AnalyticsDashboard } from './analytics';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTenant } from '../../contexts/TenantContext';
 import { streamCategories, streamOrders, streamProducts, streamSettings, streamTables } from '../../firebase/api-multitenant';
@@ -137,6 +138,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ activePage, setActivePag
         }
 
         switch (activePage) {
+            case 'dashboard':
+                return <AnalyticsDashboard orders={orders} settings={settings} />;
             case 'products':
                 return <ProductManager products={products} categories={categories} settings={settings} />;
             case 'categories':

@@ -39,6 +39,30 @@ export const OrderManager: React.FC<OrderManagerProps> = ({ orders, settings }) 
         }
     };
 
+    // Phase 4A: Payment status badge styling
+    const getPaymentStatusStyle = (paymentStatus?: Order['paymentStatus']): React.CSSProperties => {
+        const baseStyle: React.CSSProperties = {
+            padding: '4px 8px',
+            borderRadius: '12px',
+            fontSize: '0.75em',
+            fontWeight: 600,
+            display: 'inline-block',
+        };
+
+        switch (paymentStatus) {
+            case 'paid':
+                return { ...baseStyle, backgroundColor: '#d1fae5', color: '#065f46' };
+            case 'pending':
+                return { ...baseStyle, backgroundColor: '#fef3c7', color: '#92400e' };
+            case 'failed':
+                return { ...baseStyle, backgroundColor: '#fee2e2', color: '#991b1b' };
+            case 'refunded':
+                return { ...baseStyle, backgroundColor: '#e5e7eb', color: '#374151' };
+            default:
+                return { ...baseStyle, backgroundColor: '#f3f4f6', color: '#6b7280' };
+        }
+    };
+
     const getActionForStatus = (order: Order) => {
         switch (order.status) {
             case 'Placed':
@@ -69,6 +93,7 @@ export const OrderManager: React.FC<OrderManagerProps> = ({ orders, settings }) 
                                 <th style={styles.adminTh}>Collection Time</th>
                                 <th style={styles.adminTh}>Items</th>
                                 <th style={styles.adminTh}>Total</th>
+                                <th style={styles.adminTh}>Payment</th>
                                 <th style={styles.adminTh}>Status</th>
                                 <th style={styles.adminTh}>Actions</th>
                             </tr>
@@ -98,6 +123,11 @@ export const OrderManager: React.FC<OrderManagerProps> = ({ orders, settings }) 
                                                 Reward
                                             </span>
                                         )}
+                                    </td>
+                                    <td style={{...styles.adminTd, verticalAlign: 'top'}}>
+                                        <span style={getPaymentStatusStyle(order.paymentStatus)}>
+                                            {order.paymentStatus ? order.paymentStatus.charAt(0).toUpperCase() + order.paymentStatus.slice(1) : 'N/A'}
+                                        </span>
                                     </td>
                                     <td style={{...styles.adminTd, verticalAlign: 'top'}}>
                                         <span style={{...styles.adminOrderStatus, ...getStatusStyle(order.status)}}>
