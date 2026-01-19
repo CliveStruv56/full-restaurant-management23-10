@@ -38,6 +38,7 @@ This is a **multi-tenant SaaS restaurant management platform** built with React,
 | **Multi-Tenant SaaS** | Complete - Subdomain isolation, super admin portal |
 | **Multi-Vertical System** | Complete - 5 verticals with terminology/features |
 | **Phase 3A (Table-Reservation Linking)** | **COMPLETE** - Backend + Admin UI implemented |
+| **Phase 5 (Visual Floor Plan Builder)** | **COMPLETE** - Drag-drop, SVG rendering, customer view |
 | **Test Suite** | 14/15 suites passing (191/194 tests) |
 
 ---
@@ -72,6 +73,14 @@ This is a **multi-tenant SaaS restaurant management platform** built with React,
 - **Cross-Subdomain Viewing**: URL parameter `?superAdminViewing=true`
 - **Tenant Management**: Create, seed, and view all tenants
 - **Type-Safe Storage Keys**: `src/constants/storage.ts`
+
+### Phase 5: Visual Floor Plan Builder (Complete)
+- **FloorPlanEditor.tsx**: Full drag-and-drop table positioning
+- **FloorPlanCanvas.tsx**: SVG-based rendering with grid snapping
+- **FloorPlanDisplay.tsx**: Customer-facing real-time table status view
+- **TableShapeRenderer.tsx**: Circle, square, rectangle table shapes
+- **Features**: Capacity-based sizing, status colors, merged table visualization
+- **Integration**: Connected to reservation system for real-time status
 
 ---
 
@@ -181,10 +190,10 @@ Phase 3A (Table-Reservation Linking) is **COMPLETE**. Next priorities:
 - Advanced analytics dashboard
 - Email receipts for orders
 
-### Medium-Term (Phase 5)
-- Visual floor plan builder (drag-and-drop)
-- Real-time table status display
+### Medium-Term (Phase 6)
 - Multi-location support
+- Advanced table management features
+- Waitlist management system
 
 ### Platform Growth
 - Custom domain support
@@ -283,6 +292,14 @@ interface TenantMetadata {
 | `src/components/admin/SuperAdminPanel.tsx` | Super admin portal |
 | `src/components/admin/KitchenDisplaySystem.tsx` | KDS with table badges |
 | `src/components/admin/ReservationManager.tsx` | Reservation management |
+
+### Floor Plan Components
+| File | Purpose |
+|------|---------|
+| `src/components/admin/FloorPlanEditor.tsx` | Drag-and-drop table positioning |
+| `src/components/admin/FloorPlanCanvas.tsx` | SVG rendering with grid |
+| `src/components/admin/FloorPlanDisplay.tsx` | Customer-facing table status |
+| `src/components/admin/TableShapeRenderer.tsx` | Shape rendering (circle, square, rect) |
 
 ### Cloud Functions
 | File | Purpose |
@@ -417,10 +434,10 @@ When starting a new session:
 6. **Try the app**: Test table assignment in ReservationManager
 
 ### Priority Actions for Next Session
-1. Commit the test file fixes from this session
+1. Commit any uncommitted changes
 2. Begin Phase 4: Payment Integration (Stripe/Square)
 3. Or begin Phase 4: Analytics Dashboard
-4. Or begin Phase 5: Visual Floor Plan Builder
+4. Or begin Phase 6: Multi-location Support
 
 ### Uncommitted Changes to Review
 ```bash
