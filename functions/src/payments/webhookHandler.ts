@@ -113,7 +113,7 @@ async function handleChargeRefunded(charge: Stripe.Charge): Promise<void> {
   // Get the payment intent to access metadata
   const stripeSecretKey = getStripeSecretKey();
   const stripe = new Stripe(stripeSecretKey, {
-    apiVersion: '2024-12-18.acacia',
+    apiVersion: '2025-12-15.clover',
   });
 
   if (!charge.payment_intent) {
@@ -167,7 +167,7 @@ export const stripeWebhook = functions.https.onRequest(async (req, res) => {
 
     // Initialize Stripe
     const stripe = new Stripe(stripeSecretKey, {
-      apiVersion: '2024-12-18.acacia',
+      apiVersion: '2025-12-15.clover',
     });
 
     // Verify webhook signature

@@ -330,7 +330,7 @@ export default function SignupFlow() {
                   placeholder="your-business"
                   className="bg-white border-gray-300 text-gray-900 flex-1"
                 />
-                <span className="text-gray-600 font-medium">.restaurantos.com</span>
+                <span className="text-gray-600 font-medium">.app.vbp.solutions</span>
               </div>
 
               {subdomainChecking && (
@@ -343,7 +343,7 @@ export default function SignupFlow() {
               {!subdomainChecking && subdomainAvailable === true && signupData.subdomain.length >= 3 && (
                 <div className="flex items-center gap-2 text-sm text-green-600">
                   <CheckCircle2 className="w-4 h-4" />
-                  <span>{signupData.subdomain}.restaurantos.com is available!</span>
+                  <span>{signupData.subdomain}.app.vbp.solutions is available!</span>
                 </div>
               )}
 
@@ -363,7 +363,7 @@ export default function SignupFlow() {
               <p className="text-sm text-gray-700">
                 <strong>Preview:</strong> Your customers will visit{' '}
                 <span className="text-indigo-600 font-semibold">
-                  {signupData.subdomain || 'your-business'}.restaurantos.com
+                  {signupData.subdomain || 'your-business'}.app.vbp.solutions
                 </span>{' '}
                 to view your menu and place orders.
               </p>

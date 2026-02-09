@@ -44,11 +44,10 @@ export { autoCancelNoShows } from './scheduledJobs';
 export { createPaymentIntent, stripeWebhook } from './payments';
 
 /**
- * Legacy Functions (to be refactored)
+ * Tenant Provisioning Functions
  *
- * Note: These are the old invitation functions that can be removed
- * once the new system is fully deployed and tested
+ * Phase 0: Infrastructure - Tenant creation from VBP website signup
  */
 
-// Keeping exports organized for easy reference
-// New functions follow the spec exactly as documented
+// Tenant provisioning and subdomain availability check
+export { provisionTenantFromWebsite, checkSubdomain } from './tenants';

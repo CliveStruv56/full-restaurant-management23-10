@@ -178,7 +178,7 @@ export const createPaymentIntent = functions.https.onCall(
 
       // 6. Initialize Stripe with tenant's key
       const stripe = new Stripe(stripeSecretKey, {
-        apiVersion: '2024-12-18.acacia',
+        apiVersion: '2025-12-15.clover',
       });
 
       // 7. Create PaymentIntent

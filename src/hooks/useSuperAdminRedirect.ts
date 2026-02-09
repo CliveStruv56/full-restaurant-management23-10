@@ -105,7 +105,7 @@ export const useSuperAdminRedirect = (options: UseSuperAdminRedirectOptions) => 
       }
 
       // Redirect to super admin portal
-      // Extract base domain dynamically (e.g., "localhost", "orderflow.app", etc.)
+      // Extract base domain dynamically (e.g., "localhost", "app.vbp.solutions", etc.)
       const currentHostname = window.location.hostname;
       const parts = currentHostname.split('.');
       const baseDomain = parts.slice(1).join('.') || 'localhost'; // Remove subdomain, fallback to localhost

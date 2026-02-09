@@ -23,7 +23,7 @@ async function getTenantMetadata(tenantId: string): Promise<{ businessName: stri
 
   const tenantData = tenantDoc.data();
   return {
-    businessName: tenantData?.businessName || 'OrderFlow',
+    businessName: tenantData?.businessName || 'VBP Solutions',
     subdomain: tenantData?.subdomain || 'app',
   };
 }
@@ -32,13 +32,13 @@ async function getTenantMetadata(tenantId: string): Promise<{ businessName: stri
  * Construct signup URL
  */
 function constructSignupUrl(subdomain: string, token: string): string {
-  const baseUrl = process.env.APP_BASE_URL || 'https://orderflow.app';
+  const baseUrl = process.env.APP_BASE_URL || 'https://app.vbp.solutions';
 
   if (subdomain === 'app' || subdomain === 'localhost') {
     return `${baseUrl}/signup/${token}`;
   }
 
-  return `https://${subdomain}.orderflow.app/signup/${token}`;
+  return `https://${subdomain}.app.vbp.solutions/signup/${token}`;
 }
 
 /**
