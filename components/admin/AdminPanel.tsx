@@ -8,13 +8,17 @@ import { CategoryManager } from './CategoryManager';
 import { InvitationManager } from './InvitationManager';
 import { LandingPageSettings } from './LandingPageSettings';
 import { QRCodeManager } from './QRCodeManager';
+import { BillingSettings } from './BillingSettings';
 import { ReservationManager } from './ReservationManager';
 import { TableManager } from './TableManager';
 import { DashboardIcon, ProductsIcon, OrdersIcon, SettingsIcon, CategoryIcon, KitchenIcon } from '../Icons';
 import { AnalyticsDashboard } from './analytics';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTenant } from '../../contexts/TenantContext';
+import { useBilling } from '../../contexts/BillingContext';
 import { streamCategories, streamOrders, streamProducts, streamSettings, streamTables } from '../../firebase/api-multitenant';
+import { UpgradePrompt } from './UpgradePrompt';
+import { UsageBanner } from './UsageBanner';
 
 interface AdminPanelProps {
     activePage: string;
@@ -64,6 +68,14 @@ const ReservationIcon = () => (
     </svg>
 );
 
+// Billing Icon component
+const BillingIcon = () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
+        <line x1="1" y1="10" x2="23" y2="10"></line>
+    </svg>
+);
+
 // Table Icon component
 const TableIcon = () => (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -75,24 +87,43 @@ const TableIcon = () => (
     </svg>
 );
 
+// Lock Icon for gated features
+const LockIcon = () => (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginLeft: 'auto', opacity: 0.6 }}>
+        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+    </svg>
+);
+
 const SidebarButton: React.FC<{
     page: string;
     label: string;
     icon: React.ReactNode;
     activePage: string;
     setActivePage: (page: string) => void;
-}> = ({ page, label, icon, activePage, setActivePage }) => {
+    locked?: boolean;
+    onLockedClick?: () => void;
+}> = ({ page, label, icon, activePage, setActivePage, locked, onLockedClick }) => {
     const isActive = activePage === page;
     const className = `sidebar-button ${isActive ? 'active' : ''}`;
 
+    const handleClick = () => {
+        if (locked && onLockedClick) {
+            onLockedClick();
+        } else {
+            setActivePage(page);
+        }
+    };
+
     return (
         <button
-            onClick={() => setActivePage(page)}
-            style={styles.adminSidebarButton} // Keep base styles
+            onClick={handleClick}
+            style={{ ...styles.adminSidebarButton, opacity: locked ? 0.6 : 1 }}
             className={className.trim()}
         >
             {icon}
             <span>{label}</span>
+            {locked && <LockIcon />}
         </button>
     );
 };
@@ -101,16 +132,19 @@ const SidebarButton: React.FC<{
 export const AdminPanel: React.FC<AdminPanelProps> = ({ activePage, setActivePage }) => {
     const { logout } = useAuth();
     const { tenant } = useTenant();
+    const { hasFeature } = useBilling();
     const tenantId = tenant?.id;
 
-    // Data fetching has been moved to the parent App component to be passed down
-    // This simplifies the AdminPanel and centralizes data management.
     const [products, setProducts] = React.useState<Product[]>([]);
     const [categories, setCategories] = React.useState<Category[]>([]);
     const [settings, setSettings] = React.useState<AppSettings | null>(null);
     const [orders, setOrders] = React.useState<Order[]>([]);
     const [tables, setTables] = React.useState<Table[]>([]);
     const [loading, setLoading] = React.useState(true);
+    const [upgradePrompt, setUpgradePrompt] = React.useState<string | null>(null);
+
+    const isKdsLocked = !hasFeature('kds');
+    const isTablesLocked = !hasFeature('tableManagement');
 
     React.useEffect(() => {
         if (!tenantId) return;
@@ -158,6 +192,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ activePage, setActivePag
                 return <ReservationManager />;
             case 'tables':
                 return <TableManager tables={tables} />;
+            case 'billing':
+                return <BillingSettings />;
             default:
                 return (
                     <div>
@@ -194,16 +230,17 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ activePage, setActivePag
                 <h1 style={styles.adminSidebarTitle}>Admin Panel</h1>
                 <nav style={styles.adminSidebarNav}>
                     <SidebarButton page="dashboard" label="Dashboard" icon={<DashboardIcon />} activePage={activePage} setActivePage={setActivePage} />
-                    <SidebarButton page="kitchen" label="Kitchen View" icon={<KitchenIcon />} activePage={activePage} setActivePage={setActivePage} />
+                    <SidebarButton page="kitchen" label="Kitchen View" icon={<KitchenIcon />} activePage={activePage} setActivePage={setActivePage} locked={isKdsLocked} onLockedClick={() => setUpgradePrompt('Kitchen Display requires a Growth plan or higher.')} />
                     <SidebarButton page="landing-page" label="Landing Page" icon={<LandingPageIcon />} activePage={activePage} setActivePage={setActivePage} />
                     <SidebarButton page="qr-codes" label="QR Codes" icon={<QRCodeIcon />} activePage={activePage} setActivePage={setActivePage} />
                     <SidebarButton page="reservations" label="Reservations" icon={<ReservationIcon />} activePage={activePage} setActivePage={setActivePage} />
-                    <SidebarButton page="tables" label="Tables" icon={<TableIcon />} activePage={activePage} setActivePage={setActivePage} />
+                    <SidebarButton page="tables" label="Tables" icon={<TableIcon />} activePage={activePage} setActivePage={setActivePage} locked={isTablesLocked} onLockedClick={() => setUpgradePrompt('Table Management requires a Growth plan or higher.')} />
                     <SidebarButton page="categories" label="Categories" icon={<CategoryIcon />} activePage={activePage} setActivePage={setActivePage} />
                     <SidebarButton page="products" label="Products" icon={<ProductsIcon />} activePage={activePage} setActivePage={setActivePage} />
                     <SidebarButton page="orders" label="Orders" icon={<OrdersIcon />} activePage={activePage} setActivePage={setActivePage} />
                     <SidebarButton page="team" label="Team" icon={<TeamIcon />} activePage={activePage} setActivePage={setActivePage} />
                     <SidebarButton page="settings" label="Settings" icon={<SettingsIcon />} activePage={activePage} setActivePage={setActivePage} />
+                    <SidebarButton page="billing" label="Billing" icon={<BillingIcon />} activePage={activePage} setActivePage={setActivePage} />
                 </nav>
                 <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                     <button
@@ -254,7 +291,20 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ activePage, setActivePag
                         </p>
                     </div>
                 )}
+                <UsageBanner onNavigateToBilling={() => setActivePage('billing')} />
                 {renderContent()}
+                {upgradePrompt && (
+                    <UpgradePrompt
+                        variant="modal"
+                        reason={upgradePrompt}
+                        suggestedPlan="Growth"
+                        onClose={() => setUpgradePrompt(null)}
+                        onUpgrade={() => {
+                            setUpgradePrompt(null);
+                            setActivePage('billing');
+                        }}
+                    />
+                )}
             </main>
         </div>
     );

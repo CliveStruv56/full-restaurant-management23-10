@@ -298,9 +298,15 @@ export interface Tenant {
     delivery: boolean;
   };
   subscription: {
-    plan: 'trial' | 'active' | 'cancelled';
+    plan: 'trial' | 'starter' | 'growth' | 'professional' | 'enterprise' | 'cancelled';
     trialEndsAt?: string;
     modules: string[];
+    stripeCustomerId?: string;
+    stripeSubscriptionId?: string;
+    stripePriceId?: string;
+    billingInterval?: 'monthly' | 'annual';
+    currentPeriodEnd?: string;
+    cancelAtPeriodEnd?: boolean;
   };
   paymentGateway: {
     provider: 'stripe' | 'square' | 'custom' | 'none';

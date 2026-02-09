@@ -12,6 +12,7 @@
 
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
+import Stripe from 'stripe';
 
 interface ProvisionTenantData {
   name: string;
@@ -173,6 +174,31 @@ export const provisionTenantFromWebsite = functions.https.onCall(
         createdAt: now,
         createdBy: 'vbp-website',
       });
+
+      // 3b. Create Stripe customer (non-blocking — don't fail signup if Stripe is down)
+      const config = functions.config();
+      const platformSecretKey = config.stripe?.platform_secret_key;
+      if (platformSecretKey) {
+        try {
+          const stripe = new Stripe(platformSecretKey, {
+            apiVersion: '2025-12-15.clover',
+          });
+          const customer = await stripe.customers.create({
+            email: email.trim().toLowerCase(),
+            name: businessName.trim(),
+            metadata: { tenantId: subdomain, vertical: verticalType },
+          });
+          await db.doc(`tenantMetadata/${subdomain}`).update({
+            'subscription.stripeCustomerId': customer.id,
+          });
+          functions.logger.info('Stripe customer created', {
+            tenantId: subdomain,
+            stripeCustomerId: customer.id,
+          });
+        } catch (stripeError) {
+          functions.logger.error('Failed to create Stripe customer (non-critical):', stripeError);
+        }
+      }
 
       // 4. Create or update user document with tenant membership
       const userDocRef = db.doc(`users/${userId}`);

@@ -18,6 +18,7 @@ import { placeOrder, getCart, getLiveOrdersForUser, streamCategories, streamProd
 import { useTenant } from './contexts/TenantContext';
 import { CustomerJourneyProvider, useCustomerJourney } from './contexts/CustomerJourneyContext';
 import { VerticalProvider } from './src/contexts/VerticalContext';
+import { BillingProvider } from './contexts/BillingContext';
 import { ErrorBoundary, VerticalSystemErrorFallback } from './src/components/ErrorBoundary';
 import { KitchenDisplaySystem } from './components/admin/KitchenDisplaySystem';
 import { useDailySpecial } from './hooks/useDailySpecial';
@@ -589,6 +590,7 @@ const App = () => {
             <CustomerJourneyProvider>
                 <ErrorBoundary fallback={<VerticalSystemErrorFallback />}>
                     <VerticalProvider>
+                    <BillingProvider>
                         <QRCodeEntryHandler />
                         {!user ? (
                             <AuthPage />
@@ -629,6 +631,7 @@ const App = () => {
                             <CustomerFlowRouter />
                         )}
                         <OfflineIndicator />
+                    </BillingProvider>
                     </VerticalProvider>
                 </ErrorBoundary>
             </CustomerJourneyProvider>

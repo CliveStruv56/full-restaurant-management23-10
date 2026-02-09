@@ -5,12 +5,14 @@ import { styles } from '../../styles';
 import { useTenant } from '../../contexts/TenantContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { streamInvitations, createInvitation, getInvitationRateLimit, cancelInvitation } from '../../firebase/invitations';
+import { usePlanLimits } from '../../src/hooks/usePlanLimits';
 
 interface InvitationManagerProps {}
 
 export const InvitationManager: React.FC<InvitationManagerProps> = () => {
     const { tenant } = useTenant();
     const { user } = useAuth();
+    const { staff } = usePlanLimits();
     const tenantId = tenant?.id;
 
     const [invitations, setInvitations] = useState<Invitation[]>([]);
@@ -91,6 +93,14 @@ export const InvitationManager: React.FC<InvitationManagerProps> = () => {
         if (!tenantId) {
             toast.error('Unable to send invitation: Tenant not loaded');
             return;
+        }
+
+        // Soft warning if at staff limit (order still proceeds)
+        if (staff.isAtLimit) {
+            toast('You have reached your staff account limit. Consider upgrading your plan.', {
+                icon: '⚠️',
+                duration: 5000,
+            });
         }
 
         setIsSubmitting(true);

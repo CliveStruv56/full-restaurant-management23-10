@@ -51,3 +51,17 @@ export { createPaymentIntent, stripeWebhook } from './payments';
 
 // Tenant provisioning and subdomain availability check
 export { provisionTenantFromWebsite, checkSubdomain } from './tenants';
+
+/**
+ * Billing Functions
+ *
+ * Phase 1B: Platform billing (Stripe subscriptions for tenant plans)
+ */
+
+// Checkout, portal, webhook, and trial expiry
+export {
+  createCheckoutSession,
+  createPortalSession,
+  billingWebhook,
+  expireTrials,
+} from './billing';
