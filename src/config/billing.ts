@@ -98,9 +98,9 @@ export const BILLING_PLANS: Record<BillingPlan, PlanDefinition> = {
     description: 'For growing businesses',
     pricing: {
       monthly: 4900,   // £49/mo
-      annual: 3900,    // £39/mo billed annually (£468/yr)
-      stripePriceIdMonthly: 'price_growth_monthly_PLACEHOLDER',
-      stripePriceIdAnnual: 'price_growth_annual_PLACEHOLDER',
+      annual: 4158,    // £41.58/mo billed annually (£499/yr)
+      stripePriceIdMonthly: 'price_1SzJtQEnRK6RTEY32XPckOl6',
+      stripePriceIdAnnual: 'price_1SzJuLEnRK6RTEY3pf29FTR1',
     },
     limits: {
       ordersPerMonth: 500,
@@ -125,9 +125,9 @@ export const BILLING_PLANS: Record<BillingPlan, PlanDefinition> = {
     description: 'For established businesses',
     pricing: {
       monthly: 14900,  // £149/mo
-      annual: 11900,   // £119/mo billed annually (£1,428/yr)
-      stripePriceIdMonthly: 'price_professional_monthly_PLACEHOLDER',
-      stripePriceIdAnnual: 'price_professional_annual_PLACEHOLDER',
+      annual: 11658,   // £116.58/mo billed annually (£1,399/yr)
+      stripePriceIdMonthly: 'price_1SzJzlEnRK6RTEY3E3Xka3S5',
+      stripePriceIdAnnual: 'price_1SzK0DEnRK6RTEY30ybE7pay',
     },
     limits: {
       ordersPerMonth: 0,  // Unlimited
