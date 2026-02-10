@@ -533,7 +533,7 @@ export const SuperAdminPanel: React.FC = () => {
                               // Use URL parameter instead of localStorage since localStorage is origin-specific
                               // superadmin.localhost and some-good.localhost have different localStorage!
 
-                              // Extract base domain from current URL (e.g., "localhost", "app.vbp.solutions", etc.)
+                              // Extract base domain from current URL (e.g., "localhost", "app.vbpartners.app", etc.)
                               const currentHostname = window.location.hostname;
                               const parts = currentHostname.split('.');
                               const baseDomain = parts.slice(1).join('.') || 'localhost'; // Remove subdomain, fallback to localhost
@@ -634,7 +634,7 @@ export const SuperAdminPanel: React.FC = () => {
                                   <div className="flex items-center gap-2 text-sm text-gray-600">
                                     <span className="text-gray-400">🌐</span>
                                     <code className="bg-gray-100 px-2 py-1 rounded text-xs font-mono">
-                                      {tenant.subdomain}.app.vbp.solutions
+                                      {tenant.subdomain}.app.vbpartners.app
                                     </code>
                                   </div>
 
@@ -956,7 +956,7 @@ export const SuperAdminPanel: React.FC = () => {
                 <div className="flex items-center gap-2">
                   <span className="text-gray-600 font-medium">Subdomain:</span>
                   <code className="bg-white px-2 py-1 rounded text-sm font-mono text-indigo-600">
-                    {selectedTenant.subdomain}.app.vbp.solutions
+                    {selectedTenant.subdomain}.app.vbpartners.app
                   </code>
                 </div>
                 <div className="flex items-center gap-2">

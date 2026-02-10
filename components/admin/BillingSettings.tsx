@@ -186,7 +186,7 @@ const PlanCard: React.FC<{
         </button>
       ) : def.isCustom ? (
         <button
-          onClick={() => window.open('mailto:hello@vbp.solutions?subject=Enterprise%20Plan', '_blank')}
+          onClick={() => window.open('mailto:hello@vbpartners.app?subject=Enterprise%20Plan', '_blank')}
           style={{
             width: '100%',
             padding: '10px',

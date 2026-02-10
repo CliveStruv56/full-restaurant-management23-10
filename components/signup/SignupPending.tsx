@@ -68,7 +68,7 @@ export default function SignupPending() {
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="font-semibold text-indigo-600">3.</span>
-                    <span>Your site will be available at <strong>{subdomain}.app.vbp.solutions</strong></span>
+                    <span>Your site will be available at <strong>{subdomain}.app.vbpartners.app</strong></span>
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="font-semibold text-indigo-600">4.</span>
@@ -98,7 +98,7 @@ export default function SignupPending() {
             </Button>
 
             <p className="text-sm text-gray-500">
-              Questions? Contact us at support@vbp.solutions
+              Questions? Contact us at support@vbpartners.app
             </p>
           </div>
         </div>

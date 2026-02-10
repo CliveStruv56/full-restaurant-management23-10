@@ -26,7 +26,7 @@ export const generateQRCodeURL = (subdomain: string, tableNumber: number): strin
     }
 
     // Production: use subdomain
-    return `https://${subdomain}.app.vbp.solutions/order?table=${tableNumber}`;
+    return `https://${subdomain}.app.vbpartners.app/order?table=${tableNumber}`;
 };
 
 /**

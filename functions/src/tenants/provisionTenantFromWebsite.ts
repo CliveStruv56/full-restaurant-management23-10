@@ -34,7 +34,7 @@ interface ProvisionTenantResponse {
 
 const SUBDOMAIN_REGEX = /^[a-z][a-z0-9-]{2,29}$/;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const APP_DOMAIN = 'app.vbp.solutions';
+const APP_DOMAIN = 'app.vbpartners.app';
 
 const VALID_VERTICALS = [
   'restaurant',

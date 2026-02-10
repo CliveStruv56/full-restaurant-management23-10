@@ -32,8 +32,8 @@ export const TenantProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       return true;
     }
 
-    // Production: admin.app.vbp.solutions → super admin portal
-    if (hostname === 'admin.app.vbp.solutions' || hostname.startsWith('admin.')) {
+    // Production: admin.app.vbpartners.app → super admin portal
+    if (hostname === 'admin.app.vbpartners.app' || hostname.startsWith('admin.')) {
       return true;
     }
 
@@ -44,7 +44,7 @@ export const TenantProvider: React.FC<{ children: ReactNode }> = ({ children }) 
    * Get tenant ID from current request
    *
    * Logic:
-   * - superadmin.localhost / admin.app.vbp.solutions → null (super admin portal)
+   * - superadmin.localhost / admin.app.vbpartners.app → null (super admin portal)
    * - Public pages (/, /signup, /signup/pending, /register) → null (no tenant needed)
    * - localhost → 'demo-tenant'
    * - subdomain.yourapp.com → 'subdomain'
@@ -80,7 +80,7 @@ export const TenantProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     }
 
     // Production subdomain: subdomain.domain.com → 'subdomain'
-    // Example: some-good.app.vbp.solutions → 'some-good'
+    // Example: some-good.app.vbpartners.app → 'some-good'
     if (parts.length >= 3) {
       return parts[0]; // subdomain is first part
     }

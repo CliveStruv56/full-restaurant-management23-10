@@ -32,13 +32,13 @@ async function getTenantMetadata(tenantId: string): Promise<{ businessName: stri
  * Construct signup URL
  */
 function constructSignupUrl(subdomain: string, token: string): string {
-  const baseUrl = process.env.APP_BASE_URL || 'https://app.vbp.solutions';
+  const baseUrl = process.env.APP_BASE_URL || 'https://app.vbpartners.app';
 
   if (subdomain === 'app' || subdomain === 'localhost') {
     return `${baseUrl}/signup/${token}`;
   }
 
-  return `https://${subdomain}.app.vbp.solutions/signup/${token}`;
+  return `https://${subdomain}.app.vbpartners.app/signup/${token}`;
 }
 
 /**
